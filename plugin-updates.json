@@ -1,0 +1,27 @@
+{
+  "hoco-crm": {
+    "name": "Hoco CRM",
+    "version": "1.0.0",
+    "requires_wp": "5.8",
+    "requires_php": "7.4",
+    "author": "Hoco Israel",
+    "url": "https://github.com/lirish1973/Ofnoacomps-CRM-System",
+    "download_url": "https://github.com/lirish1973/Ofnoacomps-CRM-System/raw/main/wordpress-plugin/hoco-crm.zip",
+    "description": "מערכת CRM מלאה לניהול לידים, לקוחות, עסקאות ופייפליינים.",
+    "changelog": "1.0.0 - גרסה ראשונה. תיקון באג SQL ב-leads_by_source (COUNT alias).",
+    "last_updated": "2026-04-06"
+  },
+  "smart-cart-recovery": {
+    "name": "Smart Cart Recovery",
+    "version": "1.1.0",
+    "requires_wp": "5.8",
+    "requires_php": "7.4",
+    "requires_wc": "5.0",
+    "author": "Ofnoacomps",
+    "url": "https://github.com/lirish1973/Ofnoacomps-CRM-System",
+    "download_url": "https://github.com/lirish1973/Ofnoacomps-CRM-System/raw/main/wordpress-plugin/smart-cart-recovery-v1.1.0.zip",
+    "description": "שחזור עגלות נטושות — שליחת תזכורות אוטומטיות ב-WhatsApp, SMS ואימייל.",
+    "changelog": "1.1.0 - תמיכה ב-WhatsApp (Twilio), SMS ואימייל. ניהול תזכורות מרובות לפי שלבים.",
+    "last_updated": "2026-04-06"
+  }
+}
