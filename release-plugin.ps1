@@ -1,6 +1,6 @@
 # release-plugin.ps1
 # Usage:
-#   .\release-plugin.ps1 -Plugin hoco-crm -Version 1.0.1
+#   .\release-plugin.ps1 -Plugin ofnoacomps-crm -Version 1.0.1
 #   .\release-plugin.ps1 -Plugin smart-cart-recovery -Version 1.2.0
 
 param(
@@ -21,12 +21,12 @@ $Today        = (Get-Date -Format 'yyyy-MM-dd')
 
 # --- Plugin map ---
 $PluginMap = @{
-    'hoco-crm' = @{
-        MainFile     = 'hoco-crm.php'
-        VersionConst = 'HOCO_CRM_VERSION'
-        ZipGlob      = 'hoco-crm.zip'
-        NewZipName   = 'hoco-crm.zip'
-        DownloadUrl  = "$RawBase/hoco-crm.zip"
+    'ofnoacomps-crm' = @{
+        MainFile     = 'ofnoacomps-crm.php'
+        VersionConst = 'OFNOACOMPS_CRM_VERSION'
+        ZipGlob      = 'ofnoacomps-crm.zip'
+        NewZipName   = 'ofnoacomps-crm.zip'
+        DownloadUrl  = "$RawBase/ofnoacomps-crm.zip"
     }
     'smart-cart-recovery' = @{
         MainFile     = 'smart-cart-recovery.php'

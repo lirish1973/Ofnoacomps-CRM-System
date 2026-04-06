@@ -5,7 +5,7 @@ echo   Ofnoacomps Plugin Release Tool
 echo  =============================================
 echo.
 echo  Available plugins:
-echo    hoco-crm
+echo    ofnoacomps-crm
 echo    smart-cart-recovery
 echo.
 set /p PLUGIN=Plugin name: 

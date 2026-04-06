@@ -1,16 +1,16 @@
 ﻿{
-    "hoco-crm":  {
-                     "name":  "Hoco CRM",
-                     "version":  "1.0.1",
-                     "requires_wp":  "5.8",
-                     "requires_php":  "7.4",
-                     "author":  "Hoco Israel",
-                     "url":  "https://github.com/lirish1973/Ofnoacomps-CRM-System",
-                     "download_url":  "https://github.com/lirish1973/Ofnoacomps-CRM-System/raw/main/wordpress-plugin/hoco-crm.zip",
-                     "description":  "×ž×¢×¨×›×ª CRM ×ž×œ××” ×œ× ×™×”×•×œ ×œ×™×“×™×, ×œ×§×•×—×•×ª, ×¢×¡×§××•×ª ×•×¤×™×™×¤×œ×™×™× ×™×.",
-                     "changelog":  "1.0.0 - ×’×¨×¡×” ×¨××©×•× ×”. ×ª×™×§×•×Ÿ ×‘××’ SQL ×‘-leads_by_source (COUNT alias).",
-                     "last_updated":  "2026-04-06"
-                 },
+    "ofnoacomps-crm":  {
+                           "name":  "Ofnoacomps CRM",
+                           "version":  "1.0.1",
+                           "requires_wp":  "5.8",
+                           "requires_php":  "7.4",
+                           "author":  "Ofnoacomps",
+                           "url":  "https://github.com/lirish1973/Ofnoacomps-CRM-System",
+                           "download_url":  "https://github.com/lirish1973/Ofnoacomps-CRM-System/raw/main/wordpress-plugin/ofnoacomps-crm.zip",
+                           "description":  "×ž×¢×¨×›×ª CRM ×ž×œ××” ×œ× ×™×”×•×œ ×œ×™×“×™×, ×œ×§×•×—×•×ª, ×¢×¡×§××•×ª ×•×¤×™×™×¤×œ×™×™× ×™×.",
+                           "changelog":  "1.0.0 - ×’×¨×¡×” ×¨××©×•× ×”. ×ª×™×§×•×Ÿ ×‘××’ SQL ×‘-leads_by_source (COUNT alias).",
+                           "last_updated":  "2026-04-06"
+                       },
     "smart-cart-recovery":  {
                                 "name":  "Smart Cart Recovery",
                                 "version":  "1.1.1",
