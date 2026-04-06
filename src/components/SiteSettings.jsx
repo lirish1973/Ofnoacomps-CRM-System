@@ -1,119 +1,180 @@
 import { useState } from 'react'
+import axios from 'axios'
 
-export default function SiteSettings({ mode, site, onSave, onClose }) {
+export default function SiteSettings({ onSave, onCancel, initial = {} }) {
   const [form, setForm] = useState({
-    name:     site?.name     || '',
-    url:      site?.url      || '',
-    apiKey:   site?.apiKey   || '',
-    currency: site?.currency || '₪',
+    name:        initial.name        || '',
+    url:         initial.url         || '',
+    authMode:    (initial.username ? 'apppass' : 'apikey'),
+    apiKey:      initial.apiKey      || '',
+    username:    initial.username    || '',
+    appPassword: initial.appPassword || '',
+    currency:    initial.currency    || '₪',
   })
-  const [testing, setTesting] = useState(false)
-  const [testResult, setTest] = useState(null)
+  const [testing,  setTesting]  = useState(false)
+  const [testMsg,  setTestMsg]  = useState(null)
+  const [saving,   setSaving]   = useState(false)
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   const testConnection = async () => {
     setTesting(true)
-    setTest(null)
+    setTestMsg(null)
     try {
-      const res = await fetch('/api/test-connection', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: form.url, apiKey: form.apiKey }),
-      })
-      const data = await res.json()
-      setTest(data.ok ? { ok: true, msg: 'חיבור תקין ✅' } : { ok: false, msg: `שגיאה: ${data.error}` })
+      const payload = {
+        url: form.url,
+        ...(form.authMode === 'apppass'
+          ? { username: form.username, appPassword: form.appPassword }
+          : { apiKey: form.apiKey }),
+      }
+      const { data } = await axios.post('/api/test-connection', payload)
+      setTestMsg(data.ok
+        ? { ok: true,  text: '✅ חיבור תקין! האתר מגיב.' }
+        : { ok: false, text: `❌ ${data.error}` })
     } catch {
-      setTest({ ok: false, msg: 'לא ניתן להתחבר' })
+      setTestMsg({ ok: false, text: '❌ שגיאת חיבור' })
     } finally {
       setTesting(false)
     }
   }
 
-  const handleSave = () => {
-    if (!form.name || !form.url || !form.apiKey) return alert('נא למלא שם, כתובת URL ו-API Key')
-    onSave(form)
+  const handleSave = async () => {
+    if (!form.name || !form.url) return alert('שם וכתובת אתר הם שדות חובה')
+    if (form.authMode === 'apppass' && (!form.username || !form.appPassword))
+      return alert('יש להזין שם משתמש וסיסמת אפליקציה')
+    if (form.authMode === 'apikey' && !form.apiKey)
+      return alert('יש להזין מפתח API')
+
+    setSaving(true)
+    try {
+      const payload = {
+        name:     form.name,
+        url:      form.url.replace(/\/$/, ''),
+        currency: form.currency,
+        apiKey:      form.authMode === 'apikey'  ? form.apiKey      : null,
+        username:    form.authMode === 'apppass' ? form.username    : null,
+        appPassword: form.authMode === 'apppass' ? form.appPassword : null,
+      }
+      await onSave(payload)
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const isModal = mode === 'add'
-
-  const Content = () => (
-    <div className="space-y-4">
-      <div>
-        <label className="block text-sm font-medium text-slate-600 mb-1.5">שם האתר</label>
-        <input className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-400"
-          placeholder="לדוגמה: hoco-israel.co.il" value={form.name} onChange={e => set('name', e.target.value)} />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-slate-600 mb-1.5">כתובת האתר (URL)</label>
-        <input className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-400"
-          placeholder="https://www.hoco-israel.co.il" value={form.url} onChange={e => set('url', e.target.value)} />
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-slate-600 mb-1.5">
-          API Key
-          <span className="text-slate-400 font-normal mr-2">— מהגדרות הפלאגין ב-WordPress</span>
-        </label>
-        <input className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:border-blue-400"
-          placeholder="hoco_apikey_xxxxxxxxxxxxxxxx" value={form.apiKey} onChange={e => set('apiKey', e.target.value)} />
-        <p className="text-xs text-slate-400 mt-1.5">
-          WordPress Admin → Hoco CRM → הגדרות → צור API Key
-        </p>
-      </div>
-      <div>
-        <label className="block text-sm font-medium text-slate-600 mb-1.5">סמל מטבע</label>
-        <input className="w-28 border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-blue-400"
-          placeholder="₪" value={form.currency} onChange={e => set('currency', e.target.value)} />
-      </div>
-
-      {/* Test connection */}
-      <div className="flex items-center gap-3">
-        <button onClick={testConnection} disabled={testing || !form.url || !form.apiKey}
-          className="bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 px-4 py-2 rounded-xl text-sm font-medium transition">
-          {testing ? 'בודק...' : '🔌 בדוק חיבור'}
-        </button>
-        {testResult && (
-          <span className={`text-sm font-medium ${testResult.ok ? 'text-green-600' : 'text-red-600'}`}>
-            {testResult.msg}
-          </span>
-        )}
-      </div>
-
-      <div className="flex gap-3 justify-end pt-2">
-        {isModal && <button onClick={onClose} className="px-5 py-2.5 border border-slate-200 rounded-xl text-sm text-slate-600 hover:bg-slate-50 transition">ביטול</button>}
-        <button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition">
-          {mode === 'add' ? '+ הוסף אתר' : 'שמור שינויים'}
-        </button>
-      </div>
-    </div>
-  )
-
-  if (isModal) return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" dir="rtl">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 z-10">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-slate-800">הוסף אתר חדש</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 text-2xl leading-none">✕</button>
-        </div>
-        <Content />
-      </div>
-    </div>
-  )
+  const inputCls = 'w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-right'
+  const labelCls = 'block text-sm font-medium text-gray-700 mb-1 text-right'
 
   return (
-    <div className="p-6 max-w-lg">
-      <h2 className="text-xl font-bold text-slate-800 mb-6">הגדרות — {site?.name}</h2>
-      <div className="card">
-        <Content />
+    <div className="space-y-4" dir="rtl">
+
+      {/* Site name */}
+      <div>
+        <label className={labelCls}>שם האתר *</label>
+        <input className={inputCls} placeholder="לדוגמה: hoco-israel"
+          value={form.name} onChange={e => set('name', e.target.value)} />
       </div>
 
-      {/* API docs */}
-      <div className="card mt-4">
-        <h3 className="font-semibold text-slate-700 mb-3">📡 API Endpoint</h3>
-        <div className="bg-slate-50 rounded-lg px-4 py-3 font-mono text-xs text-slate-600 break-all">
-          {form.url ? `${form.url}/wp-json/hoco-crm/v1/` : 'https://your-site.com/wp-json/hoco-crm/v1/'}
+      {/* URL */}
+      <div>
+        <label className={labelCls}>כתובת האתר *</label>
+        <input className={inputCls} placeholder="https://www.example.com" dir="ltr"
+          value={form.url} onChange={e => set('url', e.target.value)} />
+      </div>
+
+      {/* Auth mode toggle */}
+      <div>
+        <label className={labelCls}>שיטת אימות</label>
+        <div className="flex gap-2">
+          <button
+            onClick={() => set('authMode', 'apppass')}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+              form.authMode === 'apppass'
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+            }`}>
+            🔑 Application Password
+          </button>
+          <button
+            onClick={() => set('authMode', 'apikey')}
+            className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+              form.authMode === 'apikey'
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+            }`}>
+            🗝️ API Key
+          </button>
         </div>
+      </div>
+
+      {/* Application Password fields */}
+      {form.authMode === 'apppass' && (
+        <div className="space-y-3 bg-blue-50 rounded-lg p-4">
+          <p className="text-xs text-blue-700 font-medium">
+            WordPress Admin → משתמשים → הפרופיל שלי → Application Passwords
+          </p>
+          <div>
+            <label className={labelCls}>שם משתמש WordPress *</label>
+            <input className={inputCls} placeholder="admin" dir="ltr"
+              value={form.username} onChange={e => set('username', e.target.value)} />
+          </div>
+          <div>
+            <label className={labelCls}>Application Password *</label>
+            <input className={inputCls} placeholder="xxxx xxxx xxxx xxxx xxxx xxxx" dir="ltr"
+              type="password"
+              value={form.appPassword} onChange={e => set('appPassword', e.target.value)} />
+          </div>
+        </div>
+      )}
+
+      {/* API Key field */}
+      {form.authMode === 'apikey' && (
+        <div className="space-y-2 bg-gray-50 rounded-lg p-4">
+          <div>
+            <label className={labelCls}>מפתח API (מההגדרות של הפלאגין) *</label>
+            <input className={inputCls} placeholder="hoco_..." dir="ltr"
+              type="password"
+              value={form.apiKey} onChange={e => set('apiKey', e.target.value)} />
+          </div>
+        </div>
+      )}
+
+      {/* Currency */}
+      <div>
+        <label className={labelCls}>מטבע</label>
+        <select className={inputCls} value={form.currency} onChange={e => set('currency', e.target.value)}>
+          <option value="₪">₪ שקל</option>
+          <option value="$">$ דולר</option>
+          <option value="€">€ יורו</option>
+        </select>
+      </div>
+
+      {/* Test result */}
+      {testMsg && (
+        <div className={`p-3 rounded-lg text-sm text-right ${testMsg.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+          {testMsg.text}
+        </div>
+      )}
+
+      {/* Buttons */}
+      <div className="flex gap-2 pt-2">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+          {saving ? 'שומר...' : '💾 שמור אתר'}
+        </button>
+        <button
+          onClick={testConnection}
+          disabled={testing}
+          className="flex-1 bg-gray-100 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 disabled:opacity-50">
+          {testing ? 'בודק...' : '🔌 בדוק חיבור'}
+        </button>
+        {onCancel && (
+          <button onClick={onCancel}
+            className="px-4 bg-white border border-gray-300 text-gray-600 py-2 rounded-lg text-sm hover:bg-gray-50">
+            ביטול
+          </button>
+        )}
       </div>
     </div>
   )

@@ -1,73 +1,57 @@
-const express  = require('express')
-const cors     = require('cors')
-const path     = require('path')
-const fs       = require('fs')
-const axios    = require('axios')
-const { v4: uuid } = require('crypto')
+const express = require('express')
+const cors    = require('cors')
+const path    = require('path')
+const fs      = require('fs')
+const axios   = require('axios')
 
 const app  = express()
 const PORT = 3001
 
-// ── Middleware ────────────────────────────────────────────────────────────────
 app.use(cors())
 app.use(express.json())
 
-// ── Sites config store ────────────────────────────────────────────────────────
+// ── Sites config ──────────────────────────────────────────────────────────────
 const SITES_FILE = path.join(__dirname, 'sites.json')
 
-function loadSites() {
-  if (!fs.existsSync(SITES_FILE)) return []
-  try { return JSON.parse(fs.readFileSync(SITES_FILE, 'utf8')) } catch { return [] }
-}
+function loadSites()       { if (!fs.existsSync(SITES_FILE)) return []; try { return JSON.parse(fs.readFileSync(SITES_FILE, 'utf8')) } catch { return [] } }
+function saveSites(sites)  { fs.writeFileSync(SITES_FILE, JSON.stringify(sites, null, 2)) }
+function findSite(id)      { return loadSites().find(s => s.id === id) }
+function generateId()      { return Math.random().toString(36).slice(2,10) + Date.now().toString(36) }
+function stripHtml(str)    { return typeof str === 'string' ? str.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().slice(0,300) : String(str||'') }
 
-function saveSites(sites) {
-  fs.writeFileSync(SITES_FILE, JSON.stringify(sites, null, 2))
-}
-
-function findSite(id) {
-  return loadSites().find(s => s.id === id)
-}
-
-// ── Helper: make authenticated request to WordPress ───────────────────────────
-async function wpRequest(site, method, wpPath, data = null) {
-  const base = site.url.replace(/\/$/, '')
-  const url  = `${base}/wp-json/hoco-crm/v1${wpPath}`
-
-  const config = {
-    method,
-    url,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-HOCO-API-Key': site.apiKey,
-    },
-    timeout: 15000,
+// ── Auth headers (API Key or WordPress Application Password) ──────────────────
+function buildAuthHeaders(site) {
+  if (site && site.username && site.appPassword) {
+    return { Authorization: 'Basic ' + Buffer.from(`${site.username}:${site.appPassword}`).toString('base64') }
   }
-  if (data) config.data = data
-
-  const res = await axios(config)
-  return res.data
+  if (site && site.apiKey) {
+    return { 'X-HOCO-API-Key': site.apiKey }
+  }
+  return {}
 }
 
-// ── Sites CRUD ─────────────────────────────────────────────────────────────────
+// ── WordPress proxy request ───────────────────────────────────────────────────
+async function wpRequest(site, method, wpPath, data = null) {
+  const url = site.url.replace(/\/$/, '') + '/wp-json/hoco-crm/v1' + wpPath
+  const cfg = { method, url, headers: { 'Content-Type': 'application/json', ...buildAuthHeaders(site) }, timeout: 15000 }
+  if (data) cfg.data = data
+  return (await axios(cfg)).data
+}
 
-// GET /api/sites
-app.get('/api/sites', (req, res) => {
-  res.json(loadSites())
-})
+// ── Sites CRUD ────────────────────────────────────────────────────────────────
+app.get('/api/sites', (req, res) => res.json(loadSites()))
 
-// POST /api/sites
 app.post('/api/sites', (req, res) => {
-  const { name, url, apiKey, currency } = req.body
-  if (!name || !url || !apiKey) return res.status(400).json({ error: 'name, url and apiKey required' })
-
+  const { name, url, apiKey, username, appPassword, currency } = req.body
+  if (!name || !url) return res.status(400).json({ error: 'name and url required' })
+  if (!apiKey && !(username && appPassword)) return res.status(400).json({ error: 'Provide apiKey or username+appPassword' })
   const sites = loadSites()
-  const site  = { id: generateId(), name, url: url.replace(/\/$/, ''), apiKey, currency: currency || '₪', status: 'unknown', addedAt: new Date().toISOString() }
+  const site  = { id: generateId(), name, url: url.replace(/\/$/, ''), apiKey: apiKey||null, username: username||null, appPassword: appPassword||null, currency: currency||'₪', status: 'unknown', addedAt: new Date().toISOString() }
   sites.push(site)
   saveSites(sites)
   res.status(201).json(site)
 })
 
-// PATCH /api/sites/:id
 app.patch('/api/sites/:id', (req, res) => {
   const sites = loadSites()
   const idx   = sites.findIndex(s => s.id === req.params.id)
@@ -77,89 +61,72 @@ app.patch('/api/sites/:id', (req, res) => {
   res.json(sites[idx])
 })
 
-// DELETE /api/sites/:id
 app.delete('/api/sites/:id', (req, res) => {
-  const sites = loadSites().filter(s => s.id !== req.params.id)
-  saveSites(sites)
+  saveSites(loadSites().filter(s => s.id !== req.params.id))
   res.json({ deleted: true })
 })
 
-// ── Test connection ────────────────────────────────────────────────────────────
+// ── Test connection ───────────────────────────────────────────────────────────
 app.post('/api/test-connection', async (req, res) => {
-  const { url, apiKey } = req.body
+  const { url, apiKey, username, appPassword } = req.body
   try {
-    const base = url.replace(/\/$/, '')
-    await axios.get(`${base}/wp-json/hoco-crm/v1/reports/summary`, {
-      headers: { 'X-HOCO-API-Key': apiKey },
-      timeout: 8000,
-    })
+    const headers = username && appPassword
+      ? { Authorization: 'Basic ' + Buffer.from(`${username}:${appPassword}`).toString('base64') }
+      : { 'X-HOCO-API-Key': apiKey }
+    await axios.get(url.replace(/\/$/, '') + '/wp-json/hoco-crm/v1/reports/summary', { headers, timeout: 8000 })
     res.json({ ok: true })
   } catch (e) {
-    const msg = e.response?.status === 401 ? 'API Key שגוי' :
-                e.response?.status === 404 ? 'פלאגין לא מותקן' :
-                e.code === 'ECONNREFUSED' ? 'לא ניתן להתחבר לאתר' : e.message
+    const st  = e.response?.status
+    const msg = st === 401 ? 'שם משתמש או Application Password שגויים' :
+                st === 403 ? 'אין הרשאות מספיקות' :
+                st === 404 ? 'פלאגין לא מותקן באתר' :
+                e.code === 'ECONNREFUSED' ? 'לא ניתן להתחבר לאתר' :
+                e.code === 'ENOTFOUND'    ? 'כתובת האתר לא נמצאה' :
+                stripHtml(e.response?.data?.message || e.message)
     res.json({ ok: false, error: msg })
   }
 })
 
-// ── Proxy: all WP API calls ────────────────────────────────────────────────────
-// GET  /api/sites/:id/proxy/*
-// POST /api/sites/:id/proxy/*  etc.
+// ── Proxy ─────────────────────────────────────────────────────────────────────
 app.all('/api/sites/:siteId/proxy/*', async (req, res) => {
   const site = findSite(req.params.siteId)
   if (!site) return res.status(404).json({ error: 'Site not found' })
-
-  // Extract the WP path after /proxy
-  const wpPath = '/' + req.params[0]
-
-  // Append query string if present
-  const qs = Object.keys(req.query).length
-    ? '?' + new URLSearchParams(req.query).toString()
-    : ''
-
+  const wpPath = '/' + req.params[0] + (Object.keys(req.query).length ? '?' + new URLSearchParams(req.query) : '')
   try {
-    const data = await wpRequest(site, req.method, wpPath + qs, ['POST','PATCH','PUT'].includes(req.method) ? req.body : null)
-    res.json(data)
+    res.json(await wpRequest(site, req.method, wpPath, ['POST','PATCH','PUT'].includes(req.method) ? req.body : null))
   } catch (e) {
     const status = e.response?.status || 500
-    const msg    = e.response?.data?.error || e.message
+    const raw    = e.response?.data?.message || e.response?.data?.error || e.message || 'שגיאת שרת'
+    const msg    = status === 401 ? 'שם משתמש או Application Password שגויים' :
+                   status === 403 ? 'אין הרשאות — נדרש Application Password עם הרשאת עריכה' :
+                   status === 404 ? 'פלאגין לא מותקן באתר' :
+                   stripHtml(raw)
     res.status(status).json({ error: msg })
   }
 })
 
-// ── Health check ───────────────────────────────────────────────────────────────
-app.get('/api/health', (req, res) => {
-  const sites = loadSites()
-  res.json({ ok: true, sites: sites.length, version: '1.0.0' })
-})
+// ── Health ────────────────────────────────────────────────────────────────────
+app.get('/api/health', (req, res) => res.json({ ok: true, sites: loadSites().length, version: '1.1.0' }))
 
-// Periodically ping each site to update online status
+// ── Ping all sites every 60s ──────────────────────────────────────────────────
 async function pingAllSites() {
-  const sites = loadSites()
-  let changed = false
+  const sites = loadSites(); let changed = false
   for (const site of sites) {
+    const was = site.status
     try {
-      await axios.get(`${site.url.replace(/\/$/,'')}/wp-json/hoco-crm/v1/reports/summary`, {
-        headers: { 'X-HOCO-API-Key': site.apiKey }, timeout: 5000,
-      })
-      if (site.status !== 'online') { site.status = 'online'; changed = true }
+      await axios.get(site.url.replace(/\/$/,'') + '/wp-json/hoco-crm/v1/reports/summary', { headers: buildAuthHeaders(site), timeout: 5000 })
+      site.status = 'online'
     } catch {
-      if (site.status !== 'error') { site.status = 'error'; changed = true }
+      site.status = 'error'
     }
+    if (site.status !== was) changed = true
   }
   if (changed) saveSites(sites)
 }
+setInterval(pingAllSites, 60_000)
+pingAllSites()
 
-setInterval(pingAllSites, 60_000) // ping every 60s
-pingAllSites()                    // ping on startup
-
-// ── Helper ────────────────────────────────────────────────────────────────────
-function generateId() {
-  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
-}
-
-// ── Start ─────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`🚀 Ofnoacomps CRM Server running on http://localhost:${PORT}`)
-  console.log(`   Sites config: ${SITES_FILE}`)
+  console.log(`\u{1F680} Ofnoacomps CRM Server v1.1 running on http://localhost:${PORT}`)
+  console.log(`   Sites: ${SITES_FILE}`)
 })
