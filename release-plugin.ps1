@@ -1,19 +1,7 @@
-# =============================================================================
 # release-plugin.ps1
-# =============================================================================
-# שחרור גרסה אוטומטי לפלאגינים של Ofnoacomps-CRM-System
-#
-# שימוש:
+# Usage:
 #   .\release-plugin.ps1 -Plugin hoco-crm -Version 1.0.1
 #   .\release-plugin.ps1 -Plugin smart-cart-recovery -Version 1.2.0
-#
-# מה הסקריפט עושה אוטומטית:
-#   1. מחלץ את ה-zip הנוכחי
-#   2. מעדכן את הגרסה בקובץ הראשי (header + constant)
-#   3. אורז מחדש ל-zip חדש
-#   4. מעדכן plugin-updates.json
-#   5. Commit + push לגיט
-# =============================================================================
 
 param(
     [Parameter(Mandatory)][string]$Plugin,
@@ -23,125 +11,139 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# ── הגדרות ───────────────────────────────────────────────────────────────────
-$RepoRoot    = $PSScriptRoot
-$PluginDir   = Join-Path $RepoRoot 'wordpress-plugin'
-$ManifestFile= Join-Path $RepoRoot 'plugin-updates.json'
-$TempDir     = Join-Path $RepoRoot "_release_tmp_$Plugin"
-$RawBase     = 'https://github.com/lirish1973/Ofnoacomps-CRM-System/raw/main/wordpress-plugin'
-$Today       = (Get-Date -Format 'yyyy-MM-dd')
+# --- Config ---
+$RepoRoot     = $PSScriptRoot
+$PluginDir    = Join-Path $RepoRoot 'wordpress-plugin'
+$ManifestFile = Join-Path $RepoRoot 'plugin-updates.json'
+$TempDir      = Join-Path $RepoRoot "_release_tmp"
+$RawBase      = 'https://github.com/lirish1973/Ofnoacomps-CRM-System/raw/main/wordpress-plugin'
+$Today        = (Get-Date -Format 'yyyy-MM-dd')
 
-# ── מפת פלאגינים ─────────────────────────────────────────────────────────────
+# --- Plugin map ---
 $PluginMap = @{
     'hoco-crm' = @{
-        MainFile    = 'hoco-crm.php'
-        VersionConst= 'HOCO_CRM_VERSION'
-        OldZipGlob  = 'hoco-crm.zip'
-        NewZipName  = 'hoco-crm.zip'          # תמיד אותו שם
-        DownloadUrl = "$RawBase/hoco-crm.zip"
+        MainFile     = 'hoco-crm.php'
+        VersionConst = 'HOCO_CRM_VERSION'
+        ZipGlob      = 'hoco-crm.zip'
+        NewZipName   = 'hoco-crm.zip'
+        DownloadUrl  = "$RawBase/hoco-crm.zip"
     }
     'smart-cart-recovery' = @{
-        MainFile    = 'smart-cart-recovery.php'
-        VersionConst= 'SCR_VERSION'
-        OldZipGlob  = 'smart-cart-recovery-*.zip'
-        NewZipName  = "smart-cart-recovery-v$Version.zip"
-        DownloadUrl = "$RawBase/smart-cart-recovery-v$Version.zip"
+        MainFile     = 'smart-cart-recovery.php'
+        VersionConst = 'SCR_VERSION'
+        ZipGlob      = 'smart-cart-recovery-*.zip'
+        NewZipName   = "smart-cart-recovery-v$Version.zip"
+        DownloadUrl  = "$RawBase/smart-cart-recovery-v$Version.zip"
     }
 }
 
-# ── אימות ────────────────────────────────────────────────────────────────────
+# --- Validate inputs ---
 if (-not $PluginMap.ContainsKey($Plugin)) {
-    Write-Error "פלאגין לא מוכר: '$Plugin'. אפשרויות: $($PluginMap.Keys -join ', ')"
+    Write-Error "Unknown plugin: '$Plugin'. Options: $($PluginMap.Keys -join ', ')"
     exit 1
 }
-
 if ($Version -notmatch '^\d+\.\d+(\.\d+)?$') {
-    Write-Error "פורמט גרסה לא תקין: '$Version'. דוגמה: 1.0.1 או 2.0.0"
+    Write-Error "Invalid version format: '$Version'. Example: 1.0.1 or 2.0.0"
     exit 1
 }
 
 $Cfg = $PluginMap[$Plugin]
 
-# מצא את ה-zip הנוכחי
-$OldZips = Get-ChildItem -Path $PluginDir -Filter $Cfg.OldZipGlob
+# Find current zip
+$OldZips = @(Get-ChildItem -Path $PluginDir -Filter $Cfg.ZipGlob -ErrorAction SilentlyContinue)
 if ($OldZips.Count -eq 0) {
-    Write-Error "לא נמצא zip עבור '$Plugin' ב-$PluginDir"
+    Write-Error "No zip found for '$Plugin' in $PluginDir"
     exit 1
 }
 $OldZip = $OldZips | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 
 Write-Host ""
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
-Write-Host "  Release: $Plugin  →  v$Version" -ForegroundColor Cyan
-Write-Host "  Zip נוכחי: $($OldZip.Name)" -ForegroundColor Cyan
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Cyan
+Write-Host "=============================================" -ForegroundColor Cyan
+Write-Host "  Release: $Plugin  ->  v$Version" -ForegroundColor Cyan
+Write-Host "  Current zip: $($OldZip.Name)" -ForegroundColor Cyan
+Write-Host "=============================================" -ForegroundColor Cyan
 
-# ── שלב 1: חילוץ ─────────────────────────────────────────────────────────────
-Write-Host "[1/5] מחלץ zip..." -ForegroundColor Yellow
+# ---------------------------------------------------------------
+# Step 1: Extract
+# ---------------------------------------------------------------
+Write-Host "[1/5] Extracting zip..." -ForegroundColor Yellow
 if (Test-Path $TempDir) { Remove-Item $TempDir -Recurse -Force }
 Expand-Archive -Path $OldZip.FullName -DestinationPath $TempDir -Force
 
+# Locate the plugin subfolder inside the extracted dir
 $PluginSrcDir = Join-Path $TempDir $Plugin
 if (-not (Test-Path $PluginSrcDir)) {
-    # אולי יש תיקייה בשם שונה — קח את הראשונה
     $PluginSrcDir = (Get-ChildItem $TempDir -Directory | Select-Object -First 1).FullName
 }
-
 $MainFilePath = Join-Path $PluginSrcDir $Cfg.MainFile
 if (-not (Test-Path $MainFilePath)) {
-    Write-Error "קובץ ראשי לא נמצא: $MainFilePath"
     Remove-Item $TempDir -Recurse -Force
+    Write-Error "Main file not found: $MainFilePath"
     exit 1
 }
 
-# ── שלב 2: עדכון גרסה בקוד ──────────────────────────────────────────────────
-Write-Host "[2/5] מעדכן גרסה ב-$($Cfg.MainFile)..." -ForegroundColor Yellow
-$Content = Get-Content $MainFilePath -Raw -Encoding UTF8
+# ---------------------------------------------------------------
+# Step 2: Update version strings in the main PHP file
+# ---------------------------------------------------------------
+Write-Host "[2/5] Updating version in $($Cfg.MainFile)..." -ForegroundColor Yellow
 
-# גלה גרסה נוכחית (מהקונסטנט)
-if ($Content -match "define\(\s*'$($Cfg.VersionConst)'\s*,\s*'([^']+)'\s*\)") {
-    $OldVersion = $Matches[1]
-} elseif ($Content -match "define\(\s*`"$($Cfg.VersionConst)`"\s*,\s*`"([^`"]+)`"\s*\)") {
-    $OldVersion = $Matches[1]
-} else {
-    $OldVersion = '?'
+$Lines = [System.IO.File]::ReadAllLines($MainFilePath, [System.Text.Encoding]::UTF8)
+$OldVersion = '?'
+$NewLines   = New-Object System.Collections.Generic.List[string]
+
+foreach ($Line in $Lines) {
+
+    # Detect current version from plugin header (first match wins)
+    if ($OldVersion -eq '?' -and $Line -match '^\s*\*\s+Version:\s+([\d.]+)') {
+        $OldVersion = $Matches[1]
+    }
+
+    # Replace header:   * Version:     1.0.0
+    if ($Line -match '(^\s*\*\s+Version:\s+)[\d.]+') {
+        $Line = $Line -replace '(Version:\s+)[\d.]+', "Version:     $Version"
+    }
+
+    # Replace constant: define( 'HOCO_CRM_VERSION', '1.0.0' );
+    # or:               define('SCR_VERSION','1.1.0');
+    $const = $Cfg.VersionConst
+    if ($Line -match "define\s*\(\s*['""]$const['""]") {
+        # Replace only the version value at the end: , '1.0.0' ) or ,"1.0.0")
+        $Line = $Line -replace "(define\s*\(\s*['""]$const['""]\s*,\s*['""])[\d.]+(.*)", "`${1}$Version`${2}"
+    }
+
+    $NewLines.Add($Line)
 }
 
-Write-Host "   גרסה נוכחית: $OldVersion  →  $Version" -ForegroundColor Gray
+[System.IO.File]::WriteAllLines($MainFilePath, $NewLines, [System.Text.Encoding]::UTF8)
+Write-Host "   OK: $OldVersion -> $Version" -ForegroundColor Green
 
-# עדכן header: "Version:     x.x.x"
-$Content = $Content -replace '(\*\s*Version:\s+)[\d.]+', "`${1}$Version"
+# ---------------------------------------------------------------
+# Step 3: Repack zip
+# ---------------------------------------------------------------
+Write-Host "[3/5] Packing new zip..." -ForegroundColor Yellow
 
-# עדכן constant (בגרשיים יחידות)
-$Content = $Content -replace "(define\(\s*'$($Cfg.VersionConst)'\s*,\s*')\d[\d.]*(')", "`${1}$Version`${2}"
-
-# עדכן constant (בגרשיים כפולות)
-$Content = $Content -replace "(define\(\s*`"$($Cfg.VersionConst)`"\s*,\s*`")\d[\d.]*(`")", "`${1}$Version`${2}"
-
-Set-Content -Path $MainFilePath -Value $Content -Encoding UTF8 -NoNewline
-
-Write-Host "   ✓ גרסה עודכנה" -ForegroundColor Green
-
-# ── שלב 3: ארוז מחדש ────────────────────────────────────────────────────────
-Write-Host "[3/5] אורז zip חדש..." -ForegroundColor Yellow
 $NewZipPath = Join-Path $PluginDir $Cfg.NewZipName
 
-# אם שם הזיפ משתנה לפי גרסה (smart-cart-recovery) — מחק ישן
-if ($Cfg.OldZipGlob -ne $Cfg.NewZipName) {
-    $OldZips | ForEach-Object { Remove-Item $_.FullName -Force }
-    Write-Host "   הוסר zip ישן: $($OldZips.Name -join ', ')" -ForegroundColor Gray
+# Remove old zip(s) if the filename changes per version (smart-cart-recovery)
+if ($Cfg.ZipGlob -ne $Cfg.NewZipName) {
+    $OldZips | ForEach-Object {
+        Remove-Item $_.FullName -Force
+        Write-Host "   Removed old zip: $($_.Name)" -ForegroundColor Gray
+    }
 }
 
 Compress-Archive -Path $PluginSrcDir -DestinationPath $NewZipPath -Force
-Write-Host "   ✓ $($Cfg.NewZipName)" -ForegroundColor Green
+Write-Host "   OK: $($Cfg.NewZipName)" -ForegroundColor Green
 
-# ── שלב 4: עדכון plugin-updates.json ────────────────────────────────────────
-Write-Host "[4/5] מעדכן plugin-updates.json..." -ForegroundColor Yellow
+# ---------------------------------------------------------------
+# Step 4: Update plugin-updates.json
+# ---------------------------------------------------------------
+Write-Host "[4/5] Updating plugin-updates.json..." -ForegroundColor Yellow
+
 $Manifest = Get-Content $ManifestFile -Raw | ConvertFrom-Json
-
-if (-not $Manifest.PSObject.Properties.Name.Contains($Plugin)) {
-    Write-Error "מפתח '$Plugin' חסר ב-plugin-updates.json"
+if (-not ($Manifest.PSObject.Properties.Name -contains $Plugin)) {
     Remove-Item $TempDir -Recurse -Force
+    Write-Error "Key '$Plugin' not found in plugin-updates.json"
     exit 1
 }
 
@@ -149,35 +151,36 @@ $Manifest.$Plugin.version      = $Version
 $Manifest.$Plugin.download_url = $Cfg.DownloadUrl
 $Manifest.$Plugin.last_updated = $Today
 
-# שמור עם עיצוב נקי
-$Manifest | ConvertTo-Json -Depth 5 | Set-Content $ManifestFile -Encoding UTF8
-Write-Host "   ✓ version=$Version, download_url עודכן" -ForegroundColor Green
+$JsonOut = $Manifest | ConvertTo-Json -Depth 5
+[System.IO.File]::WriteAllText($ManifestFile, $JsonOut, [System.Text.Encoding]::UTF8)
+Write-Host "   OK: version=$Version" -ForegroundColor Green
 
-# ── שלב 5: Commit + Push ────────────────────────────────────────────────────
-Write-Host "[5/5] Commit + Push לגיט..." -ForegroundColor Yellow
-$CommitMsg = "release: $Plugin v$Version"
+# ---------------------------------------------------------------
+# Step 5: git add / commit / push
+# ---------------------------------------------------------------
+Write-Host "[5/5] Committing and pushing to GitHub..." -ForegroundColor Yellow
 
 Push-Location $RepoRoot
 try {
-    git add "wordpress-plugin/$($Cfg.NewZipName)"
-    # אם שם הזיפ השתנה, הוסף את הישן ל-index (יוסר)
-    if ($Cfg.OldZipGlob -ne $Cfg.NewZipName) {
-        git add "wordpress-plugin/"
-    }
+    $RelativeZip = "wordpress-plugin/$($Cfg.NewZipName)"
+    git add $RelativeZip
     git add plugin-updates.json
+    $CommitMsg = "release: $Plugin v$Version"
     git commit -m $CommitMsg
     git push origin main
-    Write-Host "   ✓ Push הצליח" -ForegroundColor Green
+    Write-Host "   OK: pushed" -ForegroundColor Green
 } finally {
     Pop-Location
 }
 
-# ── ניקוי ────────────────────────────────────────────────────────────────────
+# ---------------------------------------------------------------
+# Cleanup
+# ---------------------------------------------------------------
 Remove-Item $TempDir -Recurse -Force
 
 Write-Host ""
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Green
-Write-Host "  ✅ Release הושלם: $Plugin v$Version" -ForegroundColor Green
-Write-Host "  האתרים יקבלו עדכון אוטומטי תוך עד 12 שעות." -ForegroundColor Green
-Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" -ForegroundColor Green
+Write-Host "=============================================" -ForegroundColor Green
+Write-Host "  DONE: $Plugin v$Version released!" -ForegroundColor Green
+Write-Host "  Sites will auto-update within 12 hours." -ForegroundColor Green
+Write-Host "=============================================" -ForegroundColor Green
 Write-Host ""
