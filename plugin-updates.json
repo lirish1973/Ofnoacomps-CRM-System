@@ -13,13 +13,13 @@
                  },
     "smart-cart-recovery":  {
                                 "name":  "Smart Cart Recovery",
-                                "version":  "1.1.0",
+                                "version":  "1.1.1",
                                 "requires_wp":  "5.8",
                                 "requires_php":  "7.4",
                                 "requires_wc":  "5.0",
                                 "author":  "Ofnoacomps",
                                 "url":  "https://github.com/lirish1973/Ofnoacomps-CRM-System",
-                                "download_url":  "https://github.com/lirish1973/Ofnoacomps-CRM-System/raw/main/wordpress-plugin/smart-cart-recovery-v1.1.0.zip",
+                                "download_url":  "https://github.com/lirish1973/Ofnoacomps-CRM-System/raw/main/wordpress-plugin/smart-cart-recovery-v1.1.1.zip",
                                 "description":  "×©×—×–×•×¨ ×¢×’×œ×•×ª × ×˜×•×©×•×ª â€” ×©×œ×™×—×ª ×ª×–×›×•×¨×•×ª ××•×˜×•×ž×˜×™×•×ª ×‘-WhatsApp, SMS ×•××™×ž×™×™×œ.",
                                 "changelog":  "1.1.0 - ×ª×ž×™×›×” ×‘-WhatsApp (Twilio), SMS ×•××™×ž×™×™×œ. × ×™×”×•×œ ×ª×–×›×•×¨×•×ª ×ž×¨×•×‘×•×ª ×œ×¤×™ ×©×œ×‘×™×.",
                                 "last_updated":  "2026-04-06"
