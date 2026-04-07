@@ -1,0 +1,289 @@
+﻿/* Ofnoacomps CRM — Admin Styles */
+:root {
+    --crm-primary:   #1e40af;
+    --crm-primary-light: #3b82f6;
+    --crm-success:   #16a34a;
+    --crm-warning:   #d97706;
+    --crm-danger:    #dc2626;
+    --crm-bg:        #f8fafc;
+    --crm-card:      #ffffff;
+    --crm-border:    #e2e8f0;
+    --crm-text:      #1e293b;
+    --crm-muted:     #64748b;
+    --crm-radius:    8px;
+}
+
+/* ── Layout ─────────────────────────────────────────────────────────── */
+.ocrm-wrap { direction: rtl; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+.ocrm-wrap * { box-sizing: border-box; }
+.ocrm-wrap h1, .ocrm-wrap h2 { color: var(--crm-text); }
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+.ocrm-page-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 0 20px;
+    border-bottom: 1px solid var(--crm-border);
+    margin-bottom: 24px;
+}
+.ocrm-page-header h1 { margin: 0; font-size: 22px; font-weight: 700; }
+
+/* ── Stat Cards ─────────────────────────────────────────────────────── */
+.ocrm-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 28px;
+}
+.ocrm-stat-card {
+    background: var(--crm-card);
+    border: 1px solid var(--crm-border);
+    border-radius: var(--crm-radius);
+    padding: 20px;
+    text-align: center;
+}
+.ocrm-stat-card .stat-value { font-size: 32px; font-weight: 700; color: var(--crm-primary); line-height: 1; }
+.ocrm-stat-card .stat-label { font-size: 13px; color: var(--crm-muted); margin-top: 6px; }
+.ocrm-stat-card.green .stat-value  { color: var(--crm-success); }
+.ocrm-stat-card.orange .stat-value { color: var(--crm-warning); }
+.ocrm-stat-card.red    .stat-value { color: var(--crm-danger); }
+
+/* ── Charts ─────────────────────────────────────────────────────────── */
+.ocrm-charts-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    margin-bottom: 28px;
+}
+.ocrm-chart-card {
+    background: var(--crm-card);
+    border: 1px solid var(--crm-border);
+    border-radius: var(--crm-radius);
+    padding: 20px;
+}
+.ocrm-chart-card h3 { margin: 0 0 16px; font-size: 15px; font-weight: 600; }
+.ocrm-chart-card canvas { max-height: 260px; }
+
+/* ── Tables ─────────────────────────────────────────────────────────── */
+.ocrm-table-wrap {
+    background: var(--crm-card);
+    border: 1px solid var(--crm-border);
+    border-radius: var(--crm-radius);
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+.ocrm-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+}
+.ocrm-table th {
+    background: #f1f5f9;
+    padding: 12px 16px;
+    text-align: right;
+    font-weight: 600;
+    color: var(--crm-text);
+    border-bottom: 1px solid var(--crm-border);
+    white-space: nowrap;
+}
+.ocrm-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--crm-border);
+    vertical-align: middle;
+    color: var(--crm-text);
+}
+.ocrm-table tr:last-child td { border-bottom: none; }
+.ocrm-table tr:hover td { background: #f8fafc; }
+.ocrm-table a { color: var(--crm-primary); text-decoration: none; font-weight: 500; }
+.ocrm-table a:hover { text-decoration: underline; }
+
+/* ── Filters ────────────────────────────────────────────────────────── */
+.ocrm-filters {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+    padding: 14px 16px;
+    background: var(--crm-card);
+    border: 1px solid var(--crm-border);
+    border-radius: var(--crm-radius);
+}
+.ocrm-filters input[type=text],
+.ocrm-filters input[type=search],
+.ocrm-filters select {
+    padding: 8px 12px;
+    border: 1px solid var(--crm-border);
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--crm-text);
+    background: #fff;
+    min-width: 140px;
+}
+.ocrm-filters input[type=text]:focus,
+.ocrm-filters select:focus { border-color: var(--crm-primary-light); outline: none; }
+
+/* ── Buttons ────────────────────────────────────────────────────────── */
+.ocrm-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 18px; border-radius: 6px; font-size: 13px; font-weight: 500;
+    cursor: pointer; border: none; text-decoration: none; transition: opacity .15s;
+}
+.ocrm-btn:hover { opacity: 0.85; }
+.ocrm-btn-primary { background: var(--crm-primary); color: #fff; }
+.ocrm-btn-success { background: var(--crm-success); color: #fff; }
+.ocrm-btn-danger  { background: var(--crm-danger);  color: #fff; }
+.ocrm-btn-outline { background: #fff; color: var(--crm-primary); border: 1px solid var(--crm-primary); }
+.ocrm-btn-sm { padding: 5px 12px; font-size: 12px; }
+
+/* ── Badges / Status ────────────────────────────────────────────────── */
+.ocrm-badge {
+    display: inline-block;
+    padding: 3px 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 600;
+}
+.badge-new        { background: #dbeafe; color: #1e40af; }
+.badge-contacted  { background: #fef3c7; color: #92400e; }
+.badge-qualified  { background: #d1fae5; color: #065f46; }
+.badge-converted  { background: #dcfce7; color: #15803d; }
+.badge-lost       { background: #fee2e2; color: #991b1b; }
+.badge-open       { background: #e0f2fe; color: #0369a1; }
+.badge-won        { background: #dcfce7; color: #15803d; }
+
+/* ── Source badges ──────────────────────────────────────────────────── */
+.source-chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 500;
+    background: #f1f5f9; color: #475569;
+}
+.source-google_ads { background: #fef9c3; color: #713f12; }
+.source-google_organic { background: #dcfce7; color: #14532d; }
+.source-facebook_ads { background: #ede9fe; color: #4c1d95; }
+.source-facebook_organic { background: #e0e7ff; color: #312e81; }
+.source-direct { background: #f1f5f9; color: #475569; }
+
+/* ── Lead Detail / Customer Detail ─────────────────────────────────── */
+.ocrm-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 20px;
+}
+.ocrm-detail-card {
+    background: var(--crm-card);
+    border: 1px solid var(--crm-border);
+    border-radius: var(--crm-radius);
+    padding: 20px;
+    margin-bottom: 16px;
+}
+.ocrm-detail-card h3 { margin: 0 0 14px; font-size: 15px; font-weight: 600; border-bottom: 1px solid var(--crm-border); padding-bottom: 10px; }
+.ocrm-field-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 14px; }
+.ocrm-field-row:last-child { border-bottom: none; }
+.ocrm-field-label { color: var(--crm-muted); font-weight: 500; }
+.ocrm-field-value { color: var(--crm-text); text-align: left; }
+
+/* ── Activity Feed ──────────────────────────────────────────────────── */
+.ocrm-activity-item {
+    display: flex; gap: 12px; padding: 12px 0;
+    border-bottom: 1px solid var(--crm-border);
+    font-size: 13px;
+}
+.ocrm-activity-item:last-child { border-bottom: none; }
+.activity-icon {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: #e0f2fe; color: #0369a1;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px; flex-shrink: 0;
+}
+.activity-body .activity-subject { font-weight: 600; color: var(--crm-text); }
+.activity-body .activity-meta    { color: var(--crm-muted); font-size: 12px; margin-top: 2px; }
+
+/* ── Pipeline / Kanban ──────────────────────────────────────────────── */
+.ocrm-kanban {
+    display: flex;
+    gap: 16px;
+    overflow-x: auto;
+    padding-bottom: 20px;
+}
+.ocrm-kanban-col {
+    min-width: 260px; max-width: 260px;
+    background: #f1f5f9;
+    border-radius: var(--crm-radius);
+    padding: 12px;
+}
+.kanban-col-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px; padding-bottom: 10px;
+    border-bottom: 3px solid var(--stage-color, var(--crm-primary));
+}
+.kanban-col-header .stage-name { font-weight: 700; font-size: 14px; }
+.kanban-col-header .stage-count { background: #fff; border-radius: 999px; padding: 2px 8px; font-size: 12px; }
+.kanban-deal-card {
+    background: #fff;
+    border: 1px solid var(--crm-border);
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: box-shadow .15s;
+}
+.kanban-deal-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+.kanban-deal-card .deal-name  { font-weight: 600; font-size: 13px; color: var(--crm-text); margin-bottom: 4px; }
+.kanban-deal-card .deal-amount{ font-size: 15px; font-weight: 700; color: var(--crm-primary); }
+.kanban-deal-card .deal-meta  { font-size: 11px; color: var(--crm-muted); margin-top: 4px; }
+
+/* ── Modal ──────────────────────────────────────────────────────────── */
+.ocrm-modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,.5);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 99999;
+}
+.ocrm-modal {
+    background: #fff;
+    border-radius: var(--crm-radius);
+    padding: 28px;
+    width: 90%; max-width: 520px;
+    max-height: 90vh; overflow-y: auto;
+    direction: rtl;
+}
+.ocrm-modal h2 { margin: 0 0 20px; font-size: 18px; }
+.ocrm-modal .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+/* ── Form ───────────────────────────────────────────────────────────── */
+.ocrm-form-row { margin-bottom: 14px; }
+.ocrm-form-row label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 5px; color: var(--crm-text); }
+.ocrm-form-row input,
+.ocrm-form-row select,
+.ocrm-form-row textarea {
+    width: 100%; padding: 9px 12px;
+    border: 1px solid var(--crm-border); border-radius: 6px;
+    font-size: 14px; color: var(--crm-text);
+    background: #fff;
+}
+.ocrm-form-row input:focus,
+.ocrm-form-row select:focus,
+.ocrm-form-row textarea:focus { border-color: var(--crm-primary-light); outline: none; }
+.ocrm-form-row textarea { min-height: 80px; resize: vertical; }
+.ocrm-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* ── Pagination ─────────────────────────────────────────────────────── */
+.ocrm-pagination { display: flex; gap: 6px; align-items: center; margin-top: 16px; }
+.ocrm-pagination a,
+.ocrm-pagination span {
+    padding: 6px 12px; border-radius: 6px; font-size: 13px;
+    border: 1px solid var(--crm-border); text-decoration: none; color: var(--crm-text);
+}
+.ocrm-pagination .current { background: var(--crm-primary); color: #fff; border-color: var(--crm-primary); }
+.ocrm-pagination a:hover { background: #f1f5f9; }
+
+/* ── Score bar ──────────────────────────────────────────────────────── */
+.score-bar { display: flex; align-items: center; gap: 8px; }
+.score-track { flex: 1; height: 6px; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
+.score-fill  { height: 100%; border-radius: 999px; background: var(--crm-primary-light); }
+
+/* ── Responsive ─────────────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+    .ocrm-charts-row  { grid-template-columns: 1fr; }
+    .ocrm-detail-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+    .ocrm-stat-grid { grid-template-columns: repeat(2, 1fr); }
+}
