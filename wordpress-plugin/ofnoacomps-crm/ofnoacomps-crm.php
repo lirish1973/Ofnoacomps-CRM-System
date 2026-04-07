@@ -34,7 +34,6 @@ spl_autoload_register(function ($class) {
         'Ofnoacomps_CRM_Deal'       => 'includes/class-deal.php',
         'Ofnoacomps_CRM_Pipeline'   => 'includes/class-pipeline.php',
         'Ofnoacomps_CRM_Activity'   => 'includes/class-activity.php',
-        'Ofnoacomps_CRM_Tracker'    => 'includes/class-tracker.php',
         'Ofnoacomps_CRM_Reports'    => 'includes/class-reports.php',
         'Ofnoacomps_CRM_Admin'      => 'admin/class-admin.php',
         'Ofnoacomps_CRM_REST_API'   => 'api/class-rest-api.php',
