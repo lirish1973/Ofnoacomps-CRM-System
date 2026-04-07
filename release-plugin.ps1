@@ -152,7 +152,20 @@ if ($Plugin -eq 'smart-cart-recovery') {
         }
 }
 
-Compress-Archive -Path $TempPluginDir -DestinationPath $NewZipPath -Force
+# Use 7-Zip for proper forward-slash ZIP entries (Linux compatible)
+$7zExe = @("C:\Program Files\7-Zip\7z.exe","C:\Program Files (x86)\7-Zip\7z.exe") |
+         Where-Object { Test-Path $_ } | Select-Object -First 1
+
+if ($7zExe) {
+    Remove-Item $NewZipPath -Force -ErrorAction SilentlyContinue
+    Push-Location $TempDir
+    & $7zExe a -tzip $NewZipPath "$Plugin\" | Out-Null
+    Pop-Location
+} else {
+    # Fallback: Compress-Archive (works on Linux-tolerant hosts)
+    Compress-Archive -Path $TempPluginDir -DestinationPath $NewZipPath -Force
+    Write-Warning "7-Zip not found — ZIP may use backslashes. Install 7-Zip for best compatibility."
+}
 $ZipSize = [math]::Round((Get-Item $NewZipPath).Length / 1KB, 1)
 Write-Host "   OK: $($Cfg.NewZipName) ($ZipSize KB)" -ForegroundColor Green
 
