@@ -3,7 +3,7 @@
  * Plugin Name: Ofnoacomps CRM
  * Plugin URI:  https://www.ofnoacomps.co.il
  * Description: מערכת CRM מלאה לניהול לידים, לקוחות, עסקאות ודוחות עם מעקב מקור תנועה.
- * Version:     1.3.0
+ * Version:     1.3.2
  * Author:      Ofnoacomps
  * Text Domain: ofnoacomps-crm
  * Domain Path: /languages
@@ -11,22 +11,13 @@
 
 defined('ABSPATH') || exit;
 
-define('OFNOACOMPS_CRM_VERSION', '1.3.0');
-define('OFNOACOMPS_CRM_PLUGIN_DIR', plugin_dir_path(__FILE__));
-define('OFNOACOMPS_CRM_PLUGIN_URL', plugin_dir_url(__FILE__));
+define('OFNOACOMPS_CRM_VERSION',     '1.3.2');
+define('OFNOACOMPS_CRM_PLUGIN_DIR',  plugin_dir_path(__FILE__));
+define('OFNOACOMPS_CRM_PLUGIN_URL',  plugin_dir_url(__FILE__));
 define('OFNOACOMPS_CRM_PLUGIN_FILE', __FILE__);
-
-// Auto-updater (checks GitHub for major + minor + patch updates)
-require_once OFNOACOMPS_CRM_PLUGIN_DIR . 'includes/class-github-updater.php';
-add_action( 'init', function () {
-    new Ofnoacomps_GitHub_Updater( __FILE__, 'ofnoacomps-crm', OFNOACOMPS_CRM_VERSION );
-} );
 
 // Autoload classes
 spl_autoload_register(function ($class) {
-    $prefix = 'Ofnoacomps_CRM_';
-    if (strpos($class, $prefix) !== 0) return;
-
     $map = [
         'Ofnoacomps_CRM_Database'   => 'includes/class-database.php',
         'Ofnoacomps_CRM_Lead'       => 'includes/class-lead.php',
@@ -44,9 +35,14 @@ spl_autoload_register(function ($class) {
     }
 });
 
-// Activation / Deactivation
-register_activation_hook(__FILE__, ['Ofnoacomps_CRM_Database', 'install']);
+// Auto-updater — must be loaded before plugins_loaded so filters are registered in time
+require_once OFNOACOMPS_CRM_PLUGIN_DIR . 'includes/class-github-updater.php';
+new Ofnoacomps_GitHub_Updater( __FILE__, 'ofnoacomps-crm', OFNOACOMPS_CRM_VERSION );
+
+// Activation / Deactivation / Uninstall
+register_activation_hook(__FILE__,   ['Ofnoacomps_CRM_Database', 'install']);
 register_deactivation_hook(__FILE__, ['Ofnoacomps_CRM_Database', 'deactivate']);
+register_uninstall_hook(__FILE__,    ['Ofnoacomps_CRM_Database', 'uninstall']);
 
 /**
  * Bootstrap the plugin.
@@ -73,7 +69,6 @@ function ofnoacomps_crm_init() {
     add_action('wpforms_process_complete', 'ofnoacomps_crm_capture_wpforms_lead', 10, 4);
 
     // Generic hook — other plugins can call this
-    // do_action('ofnoacomps_crm_capture_lead', $data);
     add_action('ofnoacomps_crm_capture_lead', ['Ofnoacomps_CRM_Lead', 'capture'], 10, 1);
 }
 add_action('plugins_loaded', 'ofnoacomps_crm_init');
@@ -98,72 +93,85 @@ function ofnoacomps_crm_enqueue_tracker() {
 
 /**
  * Capture a lead from Contact Form 7.
+ *
+ * @param object $contact_form
  */
 function ofnoacomps_crm_capture_cf7_lead($contact_form) {
     $submission = WPCF7_Submission::get_instance();
     if (!$submission) return;
 
-    $posted = $submission->get_posted_data();
-    $tracker = isset($_COOKIE['ofnoacomps_crm_tracker']) ? json_decode(stripslashes($_COOKIE['ofnoacomps_crm_tracker']), true) : [];
+    $posted  = $submission->get_posted_data();
+    $tracker = isset($_COOKIE['ofnoacomps_crm_tracker'])
+        ? json_decode(stripslashes($_COOKIE['ofnoacomps_crm_tracker']), true)
+        : [];
 
-    $name_parts = explode(' ', sanitize_text_field($posted['your-name'] ?? ''), 2);
+    $name_parts = explode(' ', sanitize_text_field(isset($posted['your-name']) ? $posted['your-name'] : ''), 2);
 
     Ofnoacomps_CRM_Lead::create([
-        'first_name'   => $name_parts[0] ?? '',
-        'last_name'    => $name_parts[1] ?? '',
-        'email'        => sanitize_email($posted['your-email'] ?? ''),
-        'phone'        => sanitize_text_field($posted['your-phone'] ?? $posted['tel-788'] ?? ''),
-        'message'      => sanitize_textarea_field($posted['your-message'] ?? ''),
+        'first_name'   => isset($name_parts[0]) ? $name_parts[0] : '',
+        'last_name'    => isset($name_parts[1]) ? $name_parts[1] : '',
+        'email'        => sanitize_email(isset($posted['your-email']) ? $posted['your-email'] : ''),
+        'phone'        => sanitize_text_field(isset($posted['your-phone']) ? $posted['your-phone'] : (isset($posted['tel-788']) ? $posted['tel-788'] : '')),
+        'message'      => sanitize_textarea_field(isset($posted['your-message']) ? $posted['your-message'] : ''),
         'form_id'      => $contact_form->id(),
         'form_name'    => $contact_form->title(),
-        'page_url'     => sanitize_url($tracker['page_url'] ?? wp_get_referer()),
-        'source'       => sanitize_text_field($tracker['source'] ?? 'direct'),
-        'medium'       => sanitize_text_field($tracker['medium'] ?? ''),
-        'campaign'     => sanitize_text_field($tracker['campaign'] ?? ''),
-        'utm_term'     => sanitize_text_field($tracker['utm_term'] ?? ''),
-        'utm_content'  => sanitize_text_field($tracker['utm_content'] ?? ''),
-        'referrer'     => sanitize_url($tracker['referrer'] ?? ''),
-        'landing_page' => sanitize_url($tracker['landing_page'] ?? ''),
-        'device_type'  => sanitize_text_field($tracker['device_type'] ?? ''),
+        'page_url'     => sanitize_url(isset($tracker['page_url']) ? $tracker['page_url'] : wp_get_referer()),
+        'source'       => sanitize_text_field(isset($tracker['source']) ? $tracker['source'] : 'direct'),
+        'medium'       => sanitize_text_field(isset($tracker['medium']) ? $tracker['medium'] : ''),
+        'campaign'     => sanitize_text_field(isset($tracker['campaign']) ? $tracker['campaign'] : ''),
+        'utm_term'     => sanitize_text_field(isset($tracker['utm_term']) ? $tracker['utm_term'] : ''),
+        'utm_content'  => sanitize_text_field(isset($tracker['utm_content']) ? $tracker['utm_content'] : ''),
+        'referrer'     => sanitize_url(isset($tracker['referrer']) ? $tracker['referrer'] : ''),
+        'landing_page' => sanitize_url(isset($tracker['landing_page']) ? $tracker['landing_page'] : ''),
+        'device_type'  => sanitize_text_field(isset($tracker['device_type']) ? $tracker['device_type'] : ''),
         'ip_address'   => ofnoacomps_crm_get_ip(),
     ]);
 }
 
 /**
  * Capture a lead from WPForms.
+ *
+ * @param array $fields
+ * @param array $entry
+ * @param array $form_data
+ * @param int   $entry_id
  */
 function ofnoacomps_crm_capture_wpforms_lead($fields, $entry, $form_data, $entry_id) {
-    $tracker = isset($_COOKIE['ofnoacomps_crm_tracker']) ? json_decode(stripslashes($_COOKIE['ofnoacomps_crm_tracker']), true) : [];
+    $tracker = isset($_COOKIE['ofnoacomps_crm_tracker'])
+        ? json_decode(stripslashes($_COOKIE['ofnoacomps_crm_tracker']), true)
+        : [];
     $email = $phone = $name = '';
 
     foreach ($fields as $field) {
         if (in_array($field['type'], ['email'])) $email = $field['value'];
         if (in_array($field['type'], ['phone'])) $phone = $field['value'];
-        if (in_array($field['type'], ['name'])) $name = $field['value_raw'] ?? $field['value'];
+        if (in_array($field['type'], ['name'])) $name = isset($field['value_raw']) ? $field['value_raw'] : $field['value'];
     }
 
     $name_parts = explode(' ', sanitize_text_field($name), 2);
 
     Ofnoacomps_CRM_Lead::create([
-        'first_name'   => $name_parts[0] ?? '',
-        'last_name'    => $name_parts[1] ?? '',
+        'first_name'   => isset($name_parts[0]) ? $name_parts[0] : '',
+        'last_name'    => isset($name_parts[1]) ? $name_parts[1] : '',
         'email'        => sanitize_email($email),
         'phone'        => sanitize_text_field($phone),
         'form_id'      => $form_data['id'],
-        'form_name'    => $form_data['settings']['form_title'] ?? '',
-        'source'       => sanitize_text_field($tracker['source'] ?? 'direct'),
-        'medium'       => sanitize_text_field($tracker['medium'] ?? ''),
-        'campaign'     => sanitize_text_field($tracker['campaign'] ?? ''),
-        'utm_term'     => sanitize_text_field($tracker['utm_term'] ?? ''),
-        'utm_content'  => sanitize_text_field($tracker['utm_content'] ?? ''),
-        'referrer'     => sanitize_url($tracker['referrer'] ?? ''),
-        'landing_page' => sanitize_url($tracker['landing_page'] ?? ''),
+        'form_name'    => isset($form_data['settings']['form_title']) ? $form_data['settings']['form_title'] : '',
+        'source'       => sanitize_text_field(isset($tracker['source']) ? $tracker['source'] : 'direct'),
+        'medium'       => sanitize_text_field(isset($tracker['medium']) ? $tracker['medium'] : ''),
+        'campaign'     => sanitize_text_field(isset($tracker['campaign']) ? $tracker['campaign'] : ''),
+        'utm_term'     => sanitize_text_field(isset($tracker['utm_term']) ? $tracker['utm_term'] : ''),
+        'utm_content'  => sanitize_text_field(isset($tracker['utm_content']) ? $tracker['utm_content'] : ''),
+        'referrer'     => sanitize_url(isset($tracker['referrer']) ? $tracker['referrer'] : ''),
+        'landing_page' => sanitize_url(isset($tracker['landing_page']) ? $tracker['landing_page'] : ''),
         'ip_address'   => ofnoacomps_crm_get_ip(),
     ]);
 }
 
 /**
- * Get visitor IP.
+ * Get visitor IP address.
+ *
+ * @return string
  */
 function ofnoacomps_crm_get_ip() {
     foreach (['HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR'] as $key) {

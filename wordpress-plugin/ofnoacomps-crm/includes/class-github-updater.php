@@ -4,8 +4,9 @@
  *
  * Checks a JSON manifest on GitHub for newer versions (major + minor + patch).
  * Works for any plugin in the Ofnoacomps-CRM-System repo.
+ * Compatible with PHP 7.4+
  *
- * Usage (inside main plugin file, after plugins_loaded):
+ * Usage (inside main plugin file, on plugins_loaded):
  *   new Ofnoacomps_GitHub_Updater( __FILE__, 'ofnoacomps-crm', OFNOACOMPS_CRM_VERSION );
  */
 
@@ -19,13 +20,27 @@ class Ofnoacomps_GitHub_Updater {
     /** How long to cache the manifest (seconds). */
     const CACHE_TTL = 12 * HOUR_IN_SECONDS;
 
-    private string $plugin_file;    // absolute path to main plugin file
-    private string $plugin_slug;    // e.g. "ofnoacomps-crm/ofnoacomps-crm.php"
-    private string $plugin_key;     // key inside manifest JSON, e.g. "ocrm-crm"
-    private string $current_version;
-    private string $transient_key;
+    /** @var string */
+    private $plugin_file;
 
-    public function __construct( string $plugin_file, string $plugin_key, string $current_version ) {
+    /** @var string */
+    private $plugin_slug;
+
+    /** @var string */
+    private $plugin_key;
+
+    /** @var string */
+    private $current_version;
+
+    /** @var string */
+    private $transient_key;
+
+    /**
+     * @param string $plugin_file    Absolute path to main plugin file.
+     * @param string $plugin_key     Key inside manifest JSON, e.g. "ofnoacomps-crm".
+     * @param string $current_version Current plugin version string.
+     */
+    public function __construct( $plugin_file, $plugin_key, $current_version ) {
         $this->plugin_file     = $plugin_file;
         $this->plugin_slug     = plugin_basename( $plugin_file );
         $this->plugin_key      = $plugin_key;
@@ -45,11 +60,13 @@ class Ofnoacomps_GitHub_Updater {
     /**
      * Fetches (and caches) the JSON manifest from GitHub.
      * Returns the entry for this plugin, or null on failure.
+     *
+     * @return object|null
      */
-    private function get_remote_info(): ?object {
+    private function get_remote_info() {
         $cached = get_transient( $this->transient_key );
         if ( $cached !== false ) {
-            return $cached ?: null;   // false = not set; '' = cached "no data"
+            return $cached ?: null;
         }
 
         $response = wp_remote_get( self::MANIFEST_URL, [
@@ -84,8 +101,11 @@ class Ofnoacomps_GitHub_Updater {
     /**
      * Injects update data into WordPress's update transient when a newer
      * version is available (major, minor, OR patch).
+     *
+     * @param object $transient
+     * @return object
      */
-    public function inject_update( object $transient ): object {
+    public function inject_update( $transient ) {
         if ( empty( $transient->checked ) ) {
             return $transient;
         }
@@ -95,15 +115,14 @@ class Ofnoacomps_GitHub_Updater {
             return $transient;
         }
 
-        // version_compare handles "1.0.1 > 1.0.0", "1.1.0 > 1.0.0", "2.0.0 > 1.0.0"
         if ( version_compare( $info->version, $this->current_version, '>' ) ) {
             $transient->response[ $this->plugin_slug ] = (object) [
                 'id'            => $this->plugin_slug,
                 'slug'          => dirname( $this->plugin_slug ),
                 'plugin'        => $this->plugin_slug,
                 'new_version'   => $info->version,
-                'url'           => $info->url ?? 'https://github.com/lirish1973/Ofnoacomps-CRM-System',
-                'package'       => $info->download_url ?? '',
+                'url'           => isset( $info->url ) ? $info->url : 'https://github.com/lirish1973/Ofnoacomps-CRM-System',
+                'package'       => isset( $info->download_url ) ? $info->download_url : '',
                 'icons'         => [],
                 'banners'       => [],
                 'banners_rtl'   => [],
@@ -112,13 +131,12 @@ class Ofnoacomps_GitHub_Updater {
                 'compatibility' => new stdClass(),
             ];
         } else {
-            // Confirm plugin is up-to-date (prevents "update available" stuck notices)
             $transient->no_update[ $this->plugin_slug ] = (object) [
                 'id'          => $this->plugin_slug,
                 'slug'        => dirname( $this->plugin_slug ),
                 'plugin'      => $this->plugin_slug,
                 'new_version' => $this->current_version,
-                'url'         => $info->url ?? '',
+                'url'         => isset( $info->url ) ? $info->url : '',
                 'package'     => '',
                 'icons'       => [],
                 'banners'     => [],
@@ -130,12 +148,17 @@ class Ofnoacomps_GitHub_Updater {
 
     /**
      * Provides plugin info popup in the admin (changelog, version, etc.).
+     *
+     * @param mixed  $result
+     * @param string $action
+     * @param object $args
+     * @return mixed
      */
-    public function plugin_info( mixed $result, string $action, object $args ): mixed {
+    public function plugin_info( $result, $action, $args ) {
         if ( $action !== 'plugin_information' ) {
             return $result;
         }
-        if ( ( $args->slug ?? '' ) !== dirname( $this->plugin_slug ) ) {
+        if ( ( isset( $args->slug ) ? $args->slug : '' ) !== dirname( $this->plugin_slug ) ) {
             return $result;
         }
 
@@ -145,27 +168,29 @@ class Ofnoacomps_GitHub_Updater {
         }
 
         return (object) [
-            'name'          => $info->name ?? $this->plugin_key,
+            'name'          => isset( $info->name )         ? $info->name         : $this->plugin_key,
             'slug'          => dirname( $this->plugin_slug ),
-            'version'       => $info->version ?? $this->current_version,
-            'author'        => $info->author ?? 'Ofnoacomps',
-            'requires'      => $info->requires_wp ?? '5.8',
-            'requires_php'  => $info->requires_php ?? '7.4',
-            'last_updated'  => $info->last_updated ?? '',
-            'download_link' => $info->download_url ?? '',
+            'version'       => isset( $info->version )      ? $info->version      : $this->current_version,
+            'author'        => isset( $info->author )        ? $info->author       : 'Ofnoacomps',
+            'requires'      => isset( $info->requires_wp )  ? $info->requires_wp  : '5.8',
+            'requires_php'  => isset( $info->requires_php ) ? $info->requires_php : '7.4',
+            'last_updated'  => isset( $info->last_updated ) ? $info->last_updated : '',
+            'download_link' => isset( $info->download_url ) ? $info->download_url : '',
             'sections'      => [
-                'description' => $info->description ?? '',
-                'changelog'   => $info->changelog ?? '',
+                'description' => isset( $info->description ) ? $info->description : '',
+                'changelog'   => isset( $info->changelog )   ? $info->changelog   : '',
             ],
         ];
     }
 
     /**
      * Forces auto-update ON for this plugin (covers major + minor + patch).
-     * WordPress auto-updates respect both major and minor by default when
-     * this filter returns true.
+     *
+     * @param bool|null $update
+     * @param object    $item
+     * @return bool|null
      */
-    public function force_auto_update( bool|null $update, object $item ): bool|null {
+    public function force_auto_update( $update, $item ) {
         if ( isset( $item->plugin ) && $item->plugin === $this->plugin_slug ) {
             return true;
         }
@@ -173,19 +198,24 @@ class Ofnoacomps_GitHub_Updater {
     }
 
     /**
-     * Clears the version cache after any plugin upgrade so the next check
-     * fetches fresh data.
+     * Clears the version cache after any plugin upgrade.
+     *
+     * @param \WP_Upgrader $upgrader
+     * @param array        $hook_extra
+     * @return void
      */
-    public function clear_cache( WP_Upgrader $upgrader, array $hook_extra ): void {
-        if ( ( $hook_extra['type'] ?? '' ) === 'plugin' ) {
+    public function clear_cache( $upgrader, $hook_extra ) {
+        if ( isset( $hook_extra['type'] ) && $hook_extra['type'] === 'plugin' ) {
             delete_transient( $this->transient_key );
         }
     }
 
     /**
      * Manually clear the cache (useful for admin "force check" button).
+     *
+     * @return void
      */
-    public function flush(): void {
+    public function flush() {
         delete_transient( $this->transient_key );
     }
 }
