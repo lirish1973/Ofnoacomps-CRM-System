@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('OFNOACOMPS_CRM_VERSION',     '1.3.4');
+define('OFNOACOMPS_CRM_VERSION',     '1.3.5');
 define('OFNOACOMPS_CRM_PLUGIN_DIR',  plugin_dir_path(__FILE__));
 define('OFNOACOMPS_CRM_PLUGIN_URL',  plugin_dir_url(__FILE__));
 define('OFNOACOMPS_CRM_PLUGIN_FILE', __FILE__);
