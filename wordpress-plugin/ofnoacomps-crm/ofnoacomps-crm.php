@@ -28,6 +28,7 @@ spl_autoload_register(function ($class) {
         'Ofnoacomps_CRM_Reports'    => 'includes/class-reports.php',
         'Ofnoacomps_CRM_Admin'      => 'admin/class-admin.php',
         'Ofnoacomps_CRM_REST_API'   => 'api/class-rest-api.php',
+        'Ofnoacomps_CRM_API_Keys'   => 'includes/class-api-keys.php',
     ];
 
     if (isset($map[$class])) {

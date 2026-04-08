@@ -168,6 +168,23 @@ class Ofnoacomps_CRM_Database {
             KEY idx_lead (lead_id)
         ) $charset;");
 
+
+        // ─── API Keys ────────────────────────────────────────────────────────
+        dbDelta("CREATE TABLE {$wpdb->prefix}ofnoacomps_api_keys (
+            id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            name         VARCHAR(200)  NOT NULL,
+            key_prefix   VARCHAR(12)   NOT NULL,
+            key_hash     VARCHAR(64)   NOT NULL,
+            capabilities TEXT,
+            is_active    TINYINT(1)    NOT NULL DEFAULT 1,
+            last_used_at DATETIME      DEFAULT NULL,
+            created_by   BIGINT UNSIGNED NOT NULL DEFAULT 0,
+            created_at   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            UNIQUE KEY idx_hash   (key_hash),
+            KEY idx_prefix (key_prefix),
+            KEY idx_active (is_active)
+        ) $charset;");
         // Seed default pipeline + stages if none exist
         self::seed_defaults();
 
@@ -184,6 +201,7 @@ class Ofnoacomps_CRM_Database {
             'ofnoacomps_leads', 'ofnoacomps_customers', 'ofnoacomps_pipelines',
             'ofnoacomps_stages', 'ofnoacomps_deals', 'ofnoacomps_activities',
             'ofnoacomps_deal_stage_log', 'ofnoacomps_lead_status_log',
+            'ofnoacomps_api_keys',
         ];
         foreach ($tables as $t) {
             $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}{$t}");

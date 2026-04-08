@@ -92,6 +92,18 @@ class Ofnoacomps_CRM_REST_API {
             ['methods' => 'GET', 'callback' => [$this, 'report_leaderboard'], 'permission_callback' => [$this, 'can_manage']],
         ]);
 
+
+        // ── API Keys (admin only) ─────────────────────────────────────────────
+        register_rest_route(self::NS, '/api-keys', [
+            ['methods' => 'GET',  'callback' => [$this, 'list_api_keys'],   'permission_callback' => [$this, 'can_admin']],
+            ['methods' => 'POST', 'callback' => [$this, 'create_api_key'],  'permission_callback' => [$this, 'can_admin']],
+        ]);
+        register_rest_route(self::NS, '/api-keys/(?P<id>\d+)', [
+            ['methods' => 'DELETE', 'callback' => [$this, 'delete_api_key'], 'permission_callback' => [$this, 'can_admin']],
+        ]);
+        register_rest_route(self::NS, '/api-keys/(?P<id>\d+)/revoke', [
+            ['methods' => 'POST', 'callback' => [$this, 'revoke_api_key'],  'permission_callback' => [$this, 'can_admin']],
+        ]);
         // ── Public lead capture (no auth) ────────────────────────────────────
         register_rest_route(self::NS, '/capture', [
             ['methods' => 'POST', 'callback' => [$this, 'public_capture'], 'permission_callback' => '__return_true'],
@@ -104,8 +116,16 @@ class Ofnoacomps_CRM_REST_API {
 
     // ── Permission ────────────────────────────────────────────────────────────
 
-    public function can_manage(WP_REST_Request $req): bool {
-        return current_user_can('edit_posts');
+    public function can_manage($req) {
+        // Accept logged-in WP user
+        if (current_user_can('edit_posts')) return true;
+        // Accept valid API key
+        $key = Ofnoacomps_CRM_API_Keys::get_key_from_request();
+        return $key !== false;
+    }
+
+    public function can_admin($req) {
+        return current_user_can('manage_options');
     }
 
     // ── Lead handlers ─────────────────────────────────────────────────────────
@@ -320,6 +340,33 @@ class Ofnoacomps_CRM_REST_API {
         wp_send_json_success(['id' => $id]);
     }
 
+
+    // ── API Key handlers ──────────────────────────────────────────────────────
+
+    public function list_api_keys($req) {
+        return $this->success(Ofnoacomps_CRM_API_Keys::list_keys());
+    }
+
+    public function create_api_key($req) {
+        $data = $req->get_json_params() ?: $req->get_body_params();
+        $result = Ofnoacomps_CRM_API_Keys::generate(
+            $data['name'] ?? '',
+            $data['capabilities'] ?? ['read'],
+            get_current_user_id()
+        );
+        if (isset($result['error'])) return $this->error($result['error'], 400);
+        return $this->success($result, 201);
+    }
+
+    public function revoke_api_key($req) {
+        $ok = Ofnoacomps_CRM_API_Keys::revoke((int)$req['id']);
+        return $ok ? $this->success(['revoked' => true]) : $this->error('Not found', 404);
+    }
+
+    public function delete_api_key($req) {
+        $ok = Ofnoacomps_CRM_API_Keys::delete((int)$req['id']);
+        return $ok ? $this->success(['deleted' => true]) : $this->error('Not found', 404);
+    }
     // ── Response helpers ────────────────────────────────────────────────────────
 
     private function success($data, int $status = 200): WP_REST_Response {

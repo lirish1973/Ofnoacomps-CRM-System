@@ -156,15 +156,27 @@ if ($Plugin -eq 'smart-cart-recovery') {
 $7zExe = @("C:\Program Files\7-Zip\7z.exe","C:\Program Files (x86)\7-Zip\7z.exe") |
          Where-Object { Test-Path $_ } | Select-Object -First 1
 
+Remove-Item $NewZipPath -Force -ErrorAction SilentlyContinue
 if ($7zExe) {
-    Remove-Item $NewZipPath -Force -ErrorAction SilentlyContinue
-    Push-Location $TempDir
-    & $7zExe a -tzip $NewZipPath "$Plugin\" | Out-Null
-    Pop-Location
+    # 7-Zip creates proper forward-slash ZIP entries (Linux compatible)
+    Start-Process -FilePath $7zExe `
+        -ArgumentList "a", "-tzip", "`"$NewZipPath`"", "`"$Plugin\`"" `
+        -WorkingDirectory $TempDir `
+        -Wait -NoNewWindow
 } else {
-    # Fallback: Compress-Archive (works on Linux-tolerant hosts)
-    Compress-Archive -Path $TempPluginDir -DestinationPath $NewZipPath -Force
-    Write-Warning "7-Zip not found — ZIP may use backslashes. Install 7-Zip for best compatibility."
+    # Fallback: .NET ZipArchive with forward slashes
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $zipStream = [System.IO.File]::Open($NewZipPath, [System.IO.FileMode]::Create)
+    $archive   = [System.IO.Compression.ZipArchive]::new($zipStream, [System.IO.Compression.ZipArchiveMode]::Create)
+    Get-ChildItem $TempPluginDir -Recurse -File | ForEach-Object {
+        $rel = $_.FullName.Substring($TempDir.Length + 1).Replace('\','/')
+        $entry = $archive.CreateEntry($rel)
+        $dst   = $entry.Open()
+        $src   = [System.IO.File]::OpenRead($_.FullName)
+        $src.CopyTo($dst); $src.Dispose(); $dst.Dispose()
+    }
+    $archive.Dispose(); $zipStream.Dispose()
+    Write-Warning "7-Zip not found — used .NET fallback (forward slashes preserved)."
 }
 $ZipSize = [math]::Round((Get-Item $NewZipPath).Length / 1KB, 1)
 Write-Host "   OK: $($Cfg.NewZipName) ($ZipSize KB)" -ForegroundColor Green

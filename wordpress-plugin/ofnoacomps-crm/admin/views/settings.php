@@ -1,8 +1,10 @@
-﻿<?php defined('ABSPATH') || exit; ?>
+﻿<?php defined('ABSPATH') || exit;
+$api_keys = Ofnoacomps_CRM_API_Keys::list_keys();
+?>
 <div class="wrap ocrm-wrap">
 <div class="ocrm-page-header"><h1>⚙️ הגדרות CRM</h1></div>
 
-<form method="post" style="max-width:560px;">
+<form method="post" style="max-width:600px;">
     <?php wp_nonce_field('ofnoacomps_settings', 'ofnoacomps_settings_nonce'); ?>
 
     <div class="ocrm-detail-card">
@@ -18,27 +20,213 @@
         </div>
     </div>
 
-    <div class="ocrm-detail-card" style="margin-top:16px;">
-        <h3>מידע טכני</h3>
-        <div class="ocrm-field-row"><span class="ocrm-field-label">גרסה</span><span class="ocrm-field-value"><?php echo OFNOACOMPS_CRM_VERSION; ?></span></div>
-        <div class="ocrm-field-row"><span class="ocrm-field-label">REST API</span><span class="ocrm-field-value"><code><?php echo rest_url('ofnoacomps-crm/v1'); ?></code></span></div>
-        <div class="ocrm-field-row">
-            <span class="ocrm-field-label">Endpoint ציבורי (capture)</span>
-            <span class="ocrm-field-value"><code><?php echo rest_url('ocrm-crm/v1/capture'); ?></code></span>
+    <button type="submit" class="ocrm-btn ocrm-btn-primary" style="margin-top:16px;">שמור הגדרות</button>
+</form>
+
+<!-- ═══════════════════════════════════════════════════════════
+     מפתחות API
+     ════════════════════════════════════════════════════════ -->
+<div class="ocrm-detail-card" style="max-width:700px;margin-top:28px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+        <h3 style="margin:0;">🔑 מפתחות API</h3>
+        <button type="button" class="ocrm-btn ocrm-btn-primary" id="ocrm-new-key-btn">+ צור מפתח חדש</button>
+    </div>
+
+    <p style="font-size:13px;color:#475569;margin-bottom:12px;">
+        מפתחות API מאפשרים לחבר מערכות חיצוניות (CRM, אוטומציה, אפליקציות) ישירות ל-Ofnoacomps CRM.<br>
+        <strong>חשוב:</strong> המפתח המלא מוצג רק פעם אחת עם היצירה — שמור אותו במקום בטוח.
+    </p>
+
+    <!-- טופס יצירת מפתח חדש -->
+    <div id="ocrm-new-key-form" style="display:none;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;margin-bottom:16px;">
+        <h4 style="margin:0 0 12px;">יצירת מפתח API חדש</h4>
+        <div class="ocrm-form-row">
+            <label>שם / תיאור</label>
+            <input type="text" id="ocrm-key-name" placeholder="לדוגמה: חיבור ל-Make.com" style="max-width:300px;">
+        </div>
+        <div class="ocrm-form-row">
+            <label>הרשאות</label>
+            <label style="font-weight:normal;display:inline-flex;align-items:center;gap:6px;margin-left:12px;">
+                <input type="checkbox" class="ocrm-key-cap" value="read" checked> קריאה
+            </label>
+            <label style="font-weight:normal;display:inline-flex;align-items:center;gap:6px;">
+                <input type="checkbox" class="ocrm-key-cap" value="write"> כתיבה
+            </label>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+            <button type="button" class="ocrm-btn ocrm-btn-primary" id="ocrm-generate-key-btn">צור מפתח</button>
+            <button type="button" class="ocrm-btn" id="ocrm-cancel-key-btn">ביטול</button>
         </div>
     </div>
 
-    <div class="ocrm-detail-card" style="margin-top:16px;">
-        <h3>אינטגרציות זמינות</h3>
-        <p style="font-size:13px;color:#475569;">הפלאגין מחובר אוטומטית ל:</p>
-        <ul style="font-size:13px;color:#475569;padding-right:20px;">
-            <li><strong>Contact Form 7</strong> — לידים נקלטים אוטומטית מכל הטפסים</li>
-            <li><strong>WPForms</strong> — תמיכה מובנית</li>
-            <li><strong>API ציבורי</strong> — <code>POST /ofnoacomps-crm/v1/capture</code> לאינטגרציות חיצוניות</li>
-            <li><strong>JavaScript</strong> — <code>OfnoacompsCRM.submitLead({...})</code> מכל טופס מותאם</li>
-        </ul>
+    <!-- הצגת מפתח חדש -->
+    <div id="ocrm-key-reveal" style="display:none;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin-bottom:16px;">
+        <p style="margin:0 0 8px;font-weight:600;color:#166534;">✅ המפתח נוצר בהצלחה — העתק אותו עכשיו, הוא לא יוצג שוב!</p>
+        <div style="display:flex;align-items:center;gap:8px;">
+            <code id="ocrm-key-value" style="background:#dcfce7;padding:8px 12px;border-radius:6px;font-size:13px;flex:1;word-break:break-all;"></code>
+            <button type="button" class="ocrm-btn" id="ocrm-copy-key-btn" style="white-space:nowrap;">📋 העתק</button>
+        </div>
     </div>
 
-    <button type="submit" class="ocrm-btn ocrm-btn-primary" style="margin-top:16px;">שמור הגדרות</button>
-</form>
+    <!-- טבלת מפתחות קיימים -->
+    <?php if ( empty($api_keys) ) : ?>
+        <p style="color:#94a3b8;font-size:13px;text-align:center;padding:20px 0;">אין מפתחות API פעילים עדיין.</p>
+    <?php else : ?>
+    <table class="ocrm-table" style="width:100%;">
+        <thead>
+            <tr>
+                <th>שם</th>
+                <th>קידומת</th>
+                <th>הרשאות</th>
+                <th>שימוש אחרון</th>
+                <th>נוצר</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="ocrm-keys-table-body">
+        <?php foreach ($api_keys as $key) : ?>
+            <tr id="ocrm-key-row-<?php echo (int)$key->id; ?>" style="<?php echo $key->is_active ? '' : 'opacity:.45;'; ?>">
+                <td>
+                    <strong><?php echo esc_html($key->name); ?></strong>
+                    <?php if (!$key->is_active) echo ' <span style="color:#ef4444;font-size:11px;">(בוטל)</span>'; ?>
+                </td>
+                <td><code><?php echo esc_html($key->key_prefix); ?>…</code></td>
+                <td><?php echo esc_html(implode(', ', $key->capabilities ?: ['read'])); ?></td>
+                <td><?php echo $key->last_used_at ? esc_html(date_i18n('d/m/Y H:i', strtotime($key->last_used_at))) : '—'; ?></td>
+                <td><?php echo esc_html(date_i18n('d/m/Y', strtotime($key->created_at))); ?></td>
+                <td style="text-align:left;">
+                    <?php if ($key->is_active) : ?>
+                    <button type="button"
+                            class="ocrm-btn ocrm-btn-danger ocrm-revoke-key"
+                            data-id="<?php echo (int)$key->id; ?>"
+                            style="padding:4px 10px;font-size:12px;">
+                        בטל
+                    </button>
+                    <?php endif; ?>
+                    <button type="button"
+                            class="ocrm-btn ocrm-delete-key"
+                            data-id="<?php echo (int)$key->id; ?>"
+                            style="padding:4px 10px;font-size:12px;margin-right:4px;">
+                        מחק
+                    </button>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+        </tbody>
+    </table>
+    <?php endif; ?>
 </div>
+
+<!-- מידע טכני -->
+<div class="ocrm-detail-card" style="max-width:700px;margin-top:16px;">
+    <h3>מידע טכני</h3>
+    <div class="ocrm-field-row"><span class="ocrm-field-label">גרסה</span><span class="ocrm-field-value"><?php echo OFNOACOMPS_CRM_VERSION; ?></span></div>
+    <div class="ocrm-field-row">
+        <span class="ocrm-field-label">REST API Base</span>
+        <span class="ocrm-field-value"><code><?php echo rest_url('ofnoacomps-crm/v1'); ?></code></span>
+    </div>
+    <div class="ocrm-field-row">
+        <span class="ocrm-field-label">אימות (Authorization header)</span>
+        <span class="ocrm-field-value"><code>Authorization: Bearer ocrm_…</code></span>
+    </div>
+    <div class="ocrm-field-row">
+        <span class="ocrm-field-label">אימות (X-API-Key header)</span>
+        <span class="ocrm-field-value"><code>X-API-Key: ocrm_…</code></span>
+    </div>
+    <div class="ocrm-field-row">
+        <span class="ocrm-field-label">Endpoint ציבורי (capture)</span>
+        <span class="ocrm-field-value"><code><?php echo rest_url('ofnoacomps-crm/v1/capture'); ?></code></span>
+    </div>
+</div>
+
+<script>
+(function($){
+    var nonce   = '<?php echo wp_create_nonce('wp_rest'); ?>';
+    var apiBase = '<?php echo rest_url('ofnoacomps-crm/v1'); ?>';
+
+    // Toggle form
+    $('#ocrm-new-key-btn').on('click', function(){
+        $('#ocrm-new-key-form').slideToggle(150);
+        $('#ocrm-key-reveal').hide();
+    });
+    $('#ocrm-cancel-key-btn').on('click', function(){
+        $('#ocrm-new-key-form').slideUp(150);
+        $('#ocrm-key-name').val('');
+    });
+
+    // Generate key
+    $('#ocrm-generate-key-btn').on('click', function(){
+        var name = $('#ocrm-key-name').val().trim();
+        if (!name){ alert('נא להזין שם למפתח'); return; }
+
+        var caps = [];
+        $('.ocrm-key-cap:checked').each(function(){ caps.push($(this).val()); });
+
+        $.ajax({
+            url: apiBase + '/api-keys',
+            method: 'POST',
+            headers: { 'X-WP-Nonce': nonce },
+            contentType: 'application/json',
+            data: JSON.stringify({ name: name, capabilities: caps }),
+            success: function(res){
+                var d = res.data;
+                $('#ocrm-key-value').text(d.key);
+                $('#ocrm-key-reveal').show();
+                $('#ocrm-new-key-form').slideUp(150);
+                $('#ocrm-key-name').val('');
+                // הוסף שורה לטבלה
+                var row = '<tr id="ocrm-key-row-'+d.id+'">' +
+                    '<td><strong>'+$('<span>').text(d.name).html()+'</strong></td>' +
+                    '<td><code>'+d.prefix+'…</code></td>' +
+                    '<td>'+(caps.join(', ') || 'read')+'</td>' +
+                    '<td>—</td><td>היום</td>' +
+                    '<td style="text-align:left;">' +
+                        '<button type="button" class="ocrm-btn ocrm-btn-danger ocrm-revoke-key" data-id="'+d.id+'" style="padding:4px 10px;font-size:12px;">בטל</button>' +
+                        '<button type="button" class="ocrm-btn ocrm-delete-key" data-id="'+d.id+'" style="padding:4px 10px;font-size:12px;margin-right:4px;">מחק</button>' +
+                    '</td></tr>';
+                if (!$('#ocrm-keys-table-body').length) location.reload();
+                else $('#ocrm-keys-table-body').prepend(row);
+            },
+            error: function(){ alert('שגיאה ביצירת המפתח'); }
+        });
+    });
+
+    // Copy key
+    $('#ocrm-copy-key-btn').on('click', function(){
+        var key = $('#ocrm-key-value').text();
+        navigator.clipboard.writeText(key).then(function(){
+            $('#ocrm-copy-key-btn').text('✅ הועתק!');
+            setTimeout(function(){ $('#ocrm-copy-key-btn').text('📋 העתק'); }, 2000);
+        });
+    });
+
+    // Revoke key
+    $(document).on('click', '.ocrm-revoke-key', function(){
+        if (!confirm('לבטל את המפתח?')) return;
+        var id = $(this).data('id');
+        $.ajax({
+            url: apiBase + '/api-keys/' + id + '/revoke',
+            method: 'POST',
+            headers: { 'X-WP-Nonce': nonce },
+            success: function(){
+                $('#ocrm-key-row-'+id).css('opacity','0.45');
+                $('#ocrm-key-row-'+id+' .ocrm-revoke-key').remove();
+            },
+            error: function(){ alert('שגיאה בביטול המפתח'); }
+        });
+    });
+
+    // Delete key
+    $(document).on('click', '.ocrm-delete-key', function(){
+        if (!confirm('למחוק את המפתח לצמיתות?')) return;
+        var id = $(this).data('id');
+        $.ajax({
+            url: apiBase + '/api-keys/' + id,
+            method: 'DELETE',
+            headers: { 'X-WP-Nonce': nonce },
+            success: function(){ $('#ocrm-key-row-'+id).fadeOut(300, function(){ $(this).remove(); }); },
+            error: function(){ alert('שגיאה במחיקת המפתח'); }
+        });
+    });
+})(jQuery);
+</script>

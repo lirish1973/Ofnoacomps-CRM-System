@@ -26,6 +26,7 @@ $tables = [
     'ofnoacomps_activities',
     'ofnoacomps_deal_stage_log',
     'ofnoacomps_lead_status_log',
+    'ofnoacomps_api_keys',
 ];
 
 foreach ( $tables as $table ) {
