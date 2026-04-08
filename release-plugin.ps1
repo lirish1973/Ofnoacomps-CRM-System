@@ -3,7 +3,7 @@
 # updates version strings, updates plugin-updates.json, commits and pushes.
 #
 # Usage:
-#   .\release-plugin.ps1 -Plugin ofnoacomps-crm -Version 1.3.1
+#   .\release-plugin.ps1 -Plugin ofnoacomps-crm -Version 1.3.7
 #   .\release-plugin.ps1 -Plugin smart-cart-recovery -Version 1.2.0
 
 param(
@@ -21,6 +21,9 @@ $ManifestFile = Join-Path $RepoRoot 'plugin-updates.json'
 $TempDir      = Join-Path $RepoRoot "_release_tmp"
 $RawBase      = 'https://github.com/lirish1973/Ofnoacomps-CRM-System/raw/main/wordpress-plugin'
 $Today        = (Get-Date -Format 'yyyy-MM-dd')
+
+# UTF-8 without BOM - used for all file writes to avoid WordPress "unexpected output" errors
+$Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
 # --- Plugin map ---
 $PluginMap = @{
@@ -50,7 +53,7 @@ if ($Version -notmatch '^\d+\.\d+(\.\d+)?$') {
 
 $Cfg = $PluginMap[$Plugin]
 
-# Source directory — always the live source, not an old zip
+# Source directory - always the live source, not an old zip
 $PluginSrcDir = Join-Path $PluginDir $Plugin
 if (-not (Test-Path $PluginSrcDir)) {
     Write-Error "Plugin source directory not found: $PluginSrcDir"
@@ -69,33 +72,32 @@ Write-Host "  Source:  $PluginSrcDir"                     -ForegroundColor Cyan
 Write-Host "=============================================" -ForegroundColor Cyan
 
 # ---------------------------------------------------------------
-# Step 1: Copy source to temp dir so we don't modify working files
+# Step 1: Copy source to temp dir
 # ---------------------------------------------------------------
-Write-Host "[1/5] Copying source to temp dir..." -ForegroundColor Yellow
+Write-Host "[1/6] Copying source to temp dir..." -ForegroundColor Yellow
 if (Test-Path $TempDir) { Remove-Item $TempDir -Recurse -Force }
 New-Item -ItemType Directory -Path $TempDir | Out-Null
 
 $TempPluginDir = Join-Path $TempDir $Plugin
 Copy-Item -Path $PluginSrcDir -Destination $TempPluginDir -Recurse -Force
 
-# Remove any dev/debug files that should not ship
+# Remove dev/debug files
 $devFiles = @('*.log', 'Thumbs.db', '.DS_Store')
 foreach ($pattern in $devFiles) {
     Get-ChildItem -Path $TempPluginDir -Filter $pattern -Recurse -ErrorAction SilentlyContinue |
         Remove-Item -Force
 }
-
 Write-Host "   OK: copied $((Get-ChildItem $TempPluginDir -Recurse -File).Count) files" -ForegroundColor Green
 
 # ---------------------------------------------------------------
-# Step 2: Update version strings in the copied main PHP file
+# Step 2: Update version in TEMP copy (for ZIP)
 # ---------------------------------------------------------------
-Write-Host "[2/5] Updating version in $($Cfg.MainFile)..." -ForegroundColor Yellow
+Write-Host "[2/6] Updating version in $($Cfg.MainFile) (temp)..." -ForegroundColor Yellow
 
 $TempMainFile = Join-Path $TempPluginDir $Cfg.MainFile
-$Lines     = [System.IO.File]::ReadAllLines($TempMainFile, [System.Text.Encoding]::UTF8)
-$OldVersion = '?'
-$NewLines   = New-Object System.Collections.Generic.List[string]
+$Lines        = [System.IO.File]::ReadAllLines($TempMainFile, $Utf8NoBom)
+$OldVersion   = '?'
+$NewLines     = New-Object System.Collections.Generic.List[string]
 
 foreach ($Line in $Lines) {
     if ($OldVersion -eq '?' -and $Line -match '^\s*\*\s+Version:\s+([\d.]+)') {
@@ -111,16 +113,16 @@ foreach ($Line in $Lines) {
     $NewLines.Add($Line)
 }
 
-[System.IO.File]::WriteAllLines($TempMainFile, $NewLines, [System.Text.Encoding]::UTF8)
+[System.IO.File]::WriteAllLines($TempMainFile, $NewLines, $Utf8NoBom)
 Write-Host "   OK: $OldVersion -> $Version" -ForegroundColor Green
 
 # ---------------------------------------------------------------
-# Step 3: Also update version in SOURCE main file (keep in sync)
+# Step 3: Sync version in SOURCE file
 # ---------------------------------------------------------------
-Write-Host "[3/5] Syncing version in source file..." -ForegroundColor Yellow
+Write-Host "[3/6] Syncing version in source file..." -ForegroundColor Yellow
 
-$SrcLines   = [System.IO.File]::ReadAllLines($MainFilePath, [System.Text.Encoding]::UTF8)
-$SyncLines  = New-Object System.Collections.Generic.List[string]
+$SrcLines  = [System.IO.File]::ReadAllLines($MainFilePath, $Utf8NoBom)
+$SyncLines = New-Object System.Collections.Generic.List[string]
 
 foreach ($Line in $SrcLines) {
     if ($Line -match '(^\s*\*\s+Version:\s+)[\d.]+') {
@@ -133,58 +135,55 @@ foreach ($Line in $SrcLines) {
     $SyncLines.Add($Line)
 }
 
-[System.IO.File]::WriteAllLines($MainFilePath, $SyncLines, [System.Text.Encoding]::UTF8)
+[System.IO.File]::WriteAllLines($MainFilePath, $SyncLines, $Utf8NoBom)
 Write-Host "   OK: source file synced" -ForegroundColor Green
 
 # ---------------------------------------------------------------
-# Step 4: Pack zip from temp dir
+# Step 4: Build ZIP from temp dir
 # ---------------------------------------------------------------
-Write-Host "[4/5] Packing zip..." -ForegroundColor Yellow
+Write-Host "[4/6] Packing ZIP..." -ForegroundColor Yellow
 
 $NewZipPath = Join-Path $PluginDir $Cfg.NewZipName
 
-# Remove old zip(s) for plugins that version their zip filename
+# Remove old ZIPs for versioned plugins
 if ($Plugin -eq 'smart-cart-recovery') {
     Get-ChildItem -Path $PluginDir -Filter 'smart-cart-recovery-*.zip' -ErrorAction SilentlyContinue |
-        ForEach-Object {
-            Remove-Item $_.FullName -Force
-            Write-Host "   Removed old zip: $($_.Name)" -ForegroundColor Gray
-        }
+        ForEach-Object { Remove-Item $_.FullName -Force; Write-Host "   Removed: $($_.Name)" -ForegroundColor Gray }
 }
 
-# Use 7-Zip for proper forward-slash ZIP entries (Linux compatible)
+Remove-Item $NewZipPath -Force -ErrorAction SilentlyContinue
+
 $7zExe = @("C:\Program Files\7-Zip\7z.exe","C:\Program Files (x86)\7-Zip\7z.exe") |
          Where-Object { Test-Path $_ } | Select-Object -First 1
 
-Remove-Item $NewZipPath -Force -ErrorAction SilentlyContinue
 if ($7zExe) {
-    # 7-Zip creates proper forward-slash ZIP entries (Linux compatible)
     Start-Process -FilePath $7zExe `
         -ArgumentList "a", "-tzip", "`"$NewZipPath`"", "`"$Plugin\`"" `
         -WorkingDirectory $TempDir `
         -Wait -NoNewWindow
 } else {
-    # Fallback: .NET ZipArchive with forward slashes
+    # .NET fallback with forward slashes
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $zipStream = [System.IO.File]::Open($NewZipPath, [System.IO.FileMode]::Create)
     $archive   = [System.IO.Compression.ZipArchive]::new($zipStream, [System.IO.Compression.ZipArchiveMode]::Create)
     Get-ChildItem $TempPluginDir -Recurse -File | ForEach-Object {
-        $rel = $_.FullName.Substring($TempDir.Length + 1).Replace('\','/')
+        $rel   = $_.FullName.Substring($TempDir.Length + 1).Replace('\','/')
         $entry = $archive.CreateEntry($rel)
         $dst   = $entry.Open()
         $src   = [System.IO.File]::OpenRead($_.FullName)
         $src.CopyTo($dst); $src.Dispose(); $dst.Dispose()
     }
     $archive.Dispose(); $zipStream.Dispose()
-    Write-Warning "7-Zip not found — used .NET fallback (forward slashes preserved)."
+    Write-Warning "7-Zip not found - used .NET fallback (forward slashes preserved)."
 }
-$ZipSize = [math]::Round((Get-Item $NewZipPath).Length / 1KB, 1)
-Write-Host "   OK: $($Cfg.NewZipName) ($ZipSize KB)" -ForegroundColor Green
+
+$ZipSizeKB = [math]::Round((Get-Item $NewZipPath).Length / 1KB, 1)
+Write-Host "   OK: $($Cfg.NewZipName) ($ZipSizeKB KB)" -ForegroundColor Green
 
 # ---------------------------------------------------------------
 # Step 5: Update plugin-updates.json
 # ---------------------------------------------------------------
-Write-Host "[5/5] Updating plugin-updates.json..." -ForegroundColor Yellow
+Write-Host "[5/6] Updating plugin-updates.json..." -ForegroundColor Yellow
 
 $Manifest = Get-Content $ManifestFile -Raw | ConvertFrom-Json
 if (-not ($Manifest.PSObject.Properties.Name -contains $Plugin)) {
@@ -198,28 +197,47 @@ $Manifest.$Plugin.download_url = $Cfg.DownloadUrl
 $Manifest.$Plugin.last_updated = $Today
 
 $JsonOut = $Manifest | ConvertTo-Json -Depth 5
-[System.IO.File]::WriteAllText($ManifestFile, $JsonOut, [System.Text.Encoding]::UTF8)
+[System.IO.File]::WriteAllText($ManifestFile, $JsonOut, $Utf8NoBom)
 Write-Host "   OK: version=$Version, last_updated=$Today" -ForegroundColor Green
 
 # ---------------------------------------------------------------
-# Step 6: git add / commit / push
+# Step 6: git add / commit / pull-rebase / push
 # ---------------------------------------------------------------
 Write-Host "[6/6] Committing and pushing to GitHub..." -ForegroundColor Yellow
 
-Push-Location $RepoRoot
-try {
-    $RelativeZip    = "wordpress-plugin/$($Cfg.NewZipName)"
-    $RelativeMain   = "wordpress-plugin/$Plugin/$($Cfg.MainFile)"
-    git add $RelativeZip
-    git add plugin-updates.json
-    git add $RelativeMain
-    $CommitMsg = "release: $Plugin v$Version"
-    git commit -m $CommitMsg
-    git pull --rebase origin main
-    git push origin main
-    Write-Host "   OK: pushed to GitHub" -ForegroundColor Green
-} finally {
-    Pop-Location
+$GitExe = @(
+    "C:\Program Files\Git\bin\git.exe",
+    "C:\Program Files (x86)\Git\bin\git.exe"
+) | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+if (-not $GitExe) {
+    $found = Get-Command git -ErrorAction SilentlyContinue
+    if ($found) { $GitExe = $found.Source }
+}
+
+if (-not $GitExe) {
+    Write-Warning "git not found - skipping commit/push. Push manually."
+} else {
+    Push-Location $RepoRoot
+    try {
+        $RelativeZip  = "wordpress-plugin/$($Cfg.NewZipName)"
+        $RelativeMain = "wordpress-plugin/$Plugin/$($Cfg.MainFile)"
+
+        & $GitExe add $RelativeZip
+        & $GitExe add plugin-updates.json
+        & $GitExe add $RelativeMain
+        & $GitExe add "wordpress-plugin/$Plugin/"
+
+        & $GitExe commit -m "release: $Plugin v$Version"
+
+        # Pull rebase first to avoid rejection if GitHub Actions pushed in parallel
+        & $GitExe pull --rebase origin main
+
+        & $GitExe push origin main
+        Write-Host "   OK: pushed to GitHub" -ForegroundColor Green
+    } finally {
+        Pop-Location
+    }
 }
 
 # ---------------------------------------------------------------
@@ -230,7 +248,7 @@ Remove-Item $TempDir -Recurse -Force
 Write-Host ""
 Write-Host "=============================================" -ForegroundColor Green
 Write-Host "  DONE: $Plugin v$Version released!"          -ForegroundColor Green
-Write-Host "  Sites will auto-update within 12 hours."   -ForegroundColor Green
-Write-Host "  Zip size: $ZipSize KB"                      -ForegroundColor Green
+Write-Host "  Sites will auto-update within 1 hour."     -ForegroundColor Green
+Write-Host "  Zip size: $ZipSizeKB KB"                   -ForegroundColor Green
 Write-Host "=============================================" -ForegroundColor Green
 Write-Host ""
