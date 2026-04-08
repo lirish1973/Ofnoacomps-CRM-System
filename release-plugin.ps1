@@ -1,4 +1,4 @@
-﻿# release-plugin.ps1
+# release-plugin.ps1
 # Packages a WordPress plugin directly from the source directory,
 # updates version strings, updates plugin-updates.json, commits and pushes.
 #
@@ -215,6 +215,7 @@ try {
     git add $RelativeMain
     $CommitMsg = "release: $Plugin v$Version"
     git commit -m $CommitMsg
+    git pull --rebase origin main
     git push origin main
     Write-Host "   OK: pushed to GitHub" -ForegroundColor Green
 } finally {

@@ -1,11 +1,9 @@
-name: Build & Auto-Update Plugin Manifest
+name: Auto-Update Plugin Manifest
 
-# Triggers on every push to main that changes PHP files inside the plugin directory.
-# Rebuilds the ZIP from source, updates plugin-updates.json, and commits back.
-# WordPress sites that use class-github-updater.php will detect the new version
-# within 1 hour (cache TTL).
-#
-# NOTE: skip if the commit was made by the bot itself (prevents infinite loop).
+# Safety net: runs only when PHP files change.
+# Skips entirely if plugin-updates.json already has the correct version
+# (meaning release.bat already did the work).
+# Uses git pull --rebase before push to handle any race conditions.
 
 on:
   push:
@@ -15,110 +13,88 @@ on:
       - 'wordpress-plugin/ofnoacomps-crm/*.php'
 
 jobs:
-  build-and-release:
+  update-manifest:
     runs-on: ubuntu-latest
-    # Skip commits that the bot itself created (prevents infinite re-trigger)
     if: github.actor != 'github-actions[bot]'
 
     permissions:
-      contents: write   # needed to push back the built ZIP + manifest
+      contents: write
 
     steps:
-      # ---------------------------------------------------------------
-      # 1. Checkout the full repo
-      # ---------------------------------------------------------------
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # ---------------------------------------------------------------
-      # 2. Read plugin version from ofnoacomps-crm.php
-      # ---------------------------------------------------------------
       - name: Extract plugin version
         id: meta
         run: |
           VERSION=$(grep -m1 "OFNOACOMPS_CRM_VERSION" \
             wordpress-plugin/ofnoacomps-crm/ofnoacomps-crm.php \
             | grep -oP "'\K[0-9.]+")
-
           if [ -z "$VERSION" ]; then
-            echo "ERROR: Could not extract version from ofnoacomps-crm.php"
+            echo "ERROR: Could not extract version"
             exit 1
           fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "today=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
+          echo "Detected version: $VERSION"
 
-          echo "version=$VERSION"          >> $GITHUB_OUTPUT
-          echo "today=$(date +%Y-%m-%d)"  >> $GITHUB_OUTPUT
-          echo "Plugin version detected: $VERSION"
+      - name: Check if manifest already up to date
+        id: check
+        run: |
+          MANIFEST_VER=$(python3 -c "import json; d=json.load(open('plugin-updates.json')); print(d['ofnoacomps-crm']['version'])")
+          PHP_VER="${{ steps.meta.outputs.version }}"
+          echo "Manifest: $MANIFEST_VER | PHP: $PHP_VER"
+          if [ "$MANIFEST_VER" = "$PHP_VER" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+            echo "Manifest already at $PHP_VER — skipping (release.bat already ran)."
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+            echo "Manifest is behind ($MANIFEST_VER < $PHP_VER) — will update."
+          fi
 
-      # ---------------------------------------------------------------
-      # 3. Rebuild the ZIP from the current source
-      # ---------------------------------------------------------------
       - name: Build plugin ZIP
+        if: steps.check.outputs.skip == 'false'
         run: |
           cd wordpress-plugin
           rm -f ofnoacomps-crm.zip
           zip -r ofnoacomps-crm.zip ofnoacomps-crm/ \
-            --exclude "*.DS_Store" \
-            --exclude "*Thumbs.db" \
-            --exclude "*.log"
-          echo "ZIP built: $(du -h ofnoacomps-crm.zip | cut -f1)"
+            --exclude "*.DS_Store" --exclude "*Thumbs.db" --exclude "*.log"
+          echo "ZIP: $(du -h ofnoacomps-crm.zip | cut -f1)"
 
-      # ---------------------------------------------------------------
-      # 4. Update plugin-updates.json with the new version & date
-      # ---------------------------------------------------------------
       - name: Update plugin-updates.json
+        if: steps.check.outputs.skip == 'false'
         run: |
           python3 - <<'PYEOF'
-          import json, os, sys
-
-          manifest_path = 'plugin-updates.json'
-          with open(manifest_path, 'r', encoding='utf-8') as f:
-              manifest = json.load(f)
-
-          version = os.environ['PLUGIN_VERSION']
-          today   = os.environ['TODAY']
-          key     = 'ofnoacomps-crm'
-
-          if key not in manifest:
-              print(f"ERROR: key '{key}' not in manifest", file=sys.stderr)
-              sys.exit(1)
-
-          manifest[key]['version']      = version
-          manifest[key]['last_updated'] = today
-          manifest[key]['download_url'] = (
+          import json, os
+          with open('plugin-updates.json', 'r', encoding='utf-8') as f:
+              m = json.load(f)
+          m['ofnoacomps-crm']['version']      = os.environ['PLUGIN_VERSION']
+          m['ofnoacomps-crm']['last_updated'] = os.environ['TODAY']
+          m['ofnoacomps-crm']['download_url'] = (
               'https://github.com/lirish1973/Ofnoacomps-CRM-System'
-              '/raw/main/wordpress-plugin/ofnoacomps-crm.zip'
-          )
-          manifest[key]['changelog'] = (
-              f'{version} - Auto-built by GitHub Actions on {today}.'
-          )
-
-          with open(manifest_path, 'w', encoding='utf-8') as f:
-              json.dump(manifest, f, ensure_ascii=False, indent=2)
-
-          print(f"plugin-updates.json updated: {key} -> {version}")
+              '/raw/main/wordpress-plugin/ofnoacomps-crm.zip')
+          with open('plugin-updates.json', 'w', encoding='utf-8') as f:
+              json.dump(m, f, ensure_ascii=False, indent=2)
+          print(f"Updated manifest to {os.environ['PLUGIN_VERSION']}")
           PYEOF
         env:
           PLUGIN_VERSION: ${{ steps.meta.outputs.version }}
           TODAY:          ${{ steps.meta.outputs.today }}
 
-      # ---------------------------------------------------------------
-      # 5. Commit and push the new ZIP + manifest back to main
-      # ---------------------------------------------------------------
-      - name: Commit and push build artifacts
+      - name: Commit and push
+        if: steps.check.outputs.skip == 'false'
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          git add wordpress-plugin/ofnoacomps-crm.zip
-          git add plugin-updates.json
-
-          # Only commit if something actually changed
+          git add wordpress-plugin/ofnoacomps-crm.zip plugin-updates.json
           if git diff --staged --quiet; then
-            echo "Nothing changed - skipping commit."
+            echo "Nothing to commit."
           else
             git commit -m "auto: build ofnoacomps-crm v${{ steps.meta.outputs.version }} [skip ci]"
+            # Pull rebase first to avoid rejection if release.bat pushed in parallel
+            git pull --rebase origin main
             git push origin main
-            echo "Pushed build artifacts to main."
+            echo "Pushed."
           fi
