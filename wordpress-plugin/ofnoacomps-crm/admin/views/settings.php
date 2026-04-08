@@ -118,6 +118,62 @@ $api_keys = Ofnoacomps_CRM_API_Keys::list_keys();
 </div>
 
 <!-- מידע טכני -->
+<!-- Auto-update section -->
+<div class="ocrm-detail-card" style="max-width:700px;margin-top:16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+        <h3 style="margin:0;">&#x1F504; &#x05E2;&#x05D3;&#x05DB;&#x05D5;&#x05E0;&#x05D9;&#x05DD; &#x05D0;&#x05D5;&#x05D8;&#x05D5;&#x05DE;&#x05D8;&#x05D9;&#x05D9;&#x05DD;</h3>
+        <?php
+        $ocrm_transient_key = 'ofnoacomps_ghupd_' . md5('ofnoacomps-crm');
+        $ocrm_cached = get_transient($ocrm_transient_key);
+        $ocrm_remote_ver = ($ocrm_cached && isset($ocrm_cached->version)) ? $ocrm_cached->version : null;
+        $ocrm_has_update = $ocrm_remote_ver && version_compare($ocrm_remote_ver, OFNOACOMPS_CRM_VERSION, '>');
+        $ocrm_force_url = wp_nonce_url(
+            add_query_arg(['page'=>'ofnoacomps-crm-settings','ocrm_force_update_check'=>'1'], admin_url('admin.php')),
+            'ocrm_force_update_check'
+        );
+        ?>
+        <a href="<?php echo esc_url($ocrm_force_url); ?>" class="ocrm-btn ocrm-btn-primary" style="font-size:13px;">
+            &#x1F50D; &#x05D1;&#x05D3;&#x05D5;&#x05E7; &#x05E2;&#x05D3;&#x05DB;&#x05D5;&#x05E0;&#x05D9;&#x05DD; &#x05E2;&#x05DB;&#x05E9;&#x05D9;&#x05D5;
+        </a>
+    </div>
+    <?php if (isset($_GET['ocrm_update_checked'])) : ?>
+    <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#166534;">
+        &#x2705; Cache &#x05E0;&#x05D5;&#x05E7;&#x05D4; &mdash; WordPress &#x05D9;&#x05D1;&#x05D3;&#x05D5;&#x05E7; &#x05E2;&#x05D3;&#x05DB;&#x05D5;&#x05E0;&#x05D9;&#x05DD; &#x05D1;&#x05D8;&#x05E2;&#x05D9;&#x05E0;&#x05D4; &#x05D4;&#x05D1;&#x05D0;&#x05D4;.
+    </div>
+    <?php endif; ?>
+    <div class="ocrm-field-row">
+        <span class="ocrm-field-label">&#x05D2;&#x05E8;&#x05E1;&#x05D0; &#x05DE;&#x05D5;&#x05EA;&#x05E7;&#x05E0;&#x05EA;</span>
+        <span class="ocrm-field-value"><strong><?php echo esc_html(OFNOACOMPS_CRM_VERSION); ?></strong></span>
+    </div>
+    <div class="ocrm-field-row">
+        <span class="ocrm-field-label">&#x05D2;&#x05E8;&#x05E1;&#x05D0; &#x05D0;&#x05D7;&#x05E8;&#x05D5;&#x05E0;&#x05D4; &#x05D1;-GitHub</span>
+        <span class="ocrm-field-value">
+            <?php if ($ocrm_remote_ver) : ?>
+                <?php if ($ocrm_has_update) : ?>
+                    <strong style="color:#dc2626;"><?php echo esc_html($ocrm_remote_ver); ?></strong>
+                    &nbsp;<a href="<?php echo esc_url(admin_url('update-core.php')); ?>" style="color:#2563eb;font-size:12px;">
+                        &rarr; &#x05E2;&#x05D3;&#x05DB;&#x05DF; &#x05E2;&#x05DB;&#x05E9;&#x05D9;&#x05D5;
+                    </a>
+                <?php else : ?>
+                    <span style="color:#16a34a;"><?php echo esc_html($ocrm_remote_ver); ?> &#x2713; &#x05E2;&#x05D3;&#x05DB;&#x05E0;&#x05D9;</span>
+                <?php endif; ?>
+            <?php else : ?>
+                <span style="color:#94a3b8;">&#x05DC;&#x05D0; &#x05E0;&#x05D1;&#x05D3;&#x05E7; &mdash; &#x05DC;&#x05D7;&#x05E5; "&#x05D1;&#x05D3;&#x05D5;&#x05E7; &#x05E2;&#x05D3;&#x05DB;&#x05D5;&#x05E0;&#x05D9;&#x05DD; &#x05E2;&#x05DB;&#x05E9;&#x05D9;&#x05D5;"</span>
+            <?php endif; ?>
+        </span>
+    </div>
+    <div class="ocrm-field-row">
+        <span class="ocrm-field-label">&#x05D1;&#x05D3;&#x05D9;&#x05E7;&#x05D4; &#x05D0;&#x05D5;&#x05D8;&#x05D5;&#x05DE;&#x05D8;&#x05D9;&#x05EA;</span>
+        <span class="ocrm-field-value" style="font-size:12px;color:#64748b;">&#x05DB;&#x05DC; &#x05E9;&#x05E2;&#x05D4; &#x05D3;&#x05E8;&#x05DA; GitHub manifest</span>
+    </div>
+    <div class="ocrm-field-row">
+        <span class="ocrm-field-label">Flush Endpoint</span>
+        <span class="ocrm-field-value">
+            <code style="font-size:11px;"><?php echo esc_html(rest_url('ofnoacomps-crm/v1/flush-update-cache')); ?></code><br>
+            <span style="font-size:11px;color:#94a3b8;">POST + Header: X-OCRM-Flush-Token: &lt;OCRM_UPDATE_SECRET&gt;</span>
+        </span>
+    </div>
+</div>
 <div class="ocrm-detail-card" style="max-width:700px;margin-top:16px;">
     <h3>מידע טכני</h3>
     <div class="ocrm-field-row"><span class="ocrm-field-label">גרסה</span><span class="ocrm-field-value"><?php echo OFNOACOMPS_CRM_VERSION; ?></span></div>

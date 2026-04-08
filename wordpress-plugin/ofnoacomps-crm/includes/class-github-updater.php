@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * GitHub Auto-Updater
  *
@@ -6,8 +6,12 @@
  * Works for any plugin in the Ofnoacomps-CRM-System repo.
  * Compatible with PHP 7.4+
  *
- * Usage (inside main plugin file, on plugins_loaded):
- *   new Ofnoacomps_GitHub_Updater( __FILE__, 'ofnoacomps-crm', OFNOACOMPS_CRM_VERSION );
+ * Flow:
+ *  1. Dev pushes code + version bump to GitHub.
+ *  2. GitHub Actions rebuilds the ZIP and updates plugin-updates.json automatically.
+ *  3. WordPress sites poll the manifest every CACHE_TTL seconds (1 hour by default).
+ *  4. When a newer version is found, WordPress shows the standard update badge.
+ *  5. Admin can also click "בדוק עדכונים עכשיו" in Settings to force-check immediately.
  */
 
 defined( 'ABSPATH' ) || exit;
@@ -17,8 +21,11 @@ class Ofnoacomps_GitHub_Updater {
     /** URL of the central version manifest in the GitHub repo. */
     const MANIFEST_URL = 'https://raw.githubusercontent.com/lirish1973/Ofnoacomps-CRM-System/main/plugin-updates.json';
 
-    /** How long to cache the manifest (seconds). */
-    const CACHE_TTL = 12 * HOUR_IN_SECONDS;
+    /**
+     * How long to cache the manifest (seconds).
+     * 1 hour — so sites detect a new version within ~1 hour of a push.
+     */
+    const CACHE_TTL = HOUR_IN_SECONDS;
 
     /** @var string */
     private $plugin_file;
@@ -51,6 +58,13 @@ class Ofnoacomps_GitHub_Updater {
         add_filter( 'plugins_api',                           [ $this, 'plugin_info' ], 20, 3 );
         add_filter( 'auto_update_plugin',                    [ $this, 'force_auto_update' ], 10, 2 );
         add_action( 'upgrader_process_complete',             [ $this, 'clear_cache' ], 10, 2 );
+
+        // Admin: handle "Check for updates now" button click
+        add_action( 'admin_init', [ $this, 'handle_force_check' ] );
+
+        // REST endpoint: POST /wp-json/ofnoacomps-crm/v1/flush-update-cache
+        // (used by release script for instant cache clear after push)
+        add_action( 'rest_api_init', [ $this, 'register_flush_endpoint' ] );
     }
 
     /* -----------------------------------------------------------------------
@@ -71,8 +85,9 @@ class Ofnoacomps_GitHub_Updater {
 
         $response = wp_remote_get( self::MANIFEST_URL, [
             'headers'   => [
-                'Accept'     => 'application/json',
-                'User-Agent' => 'WordPress/' . get_bloginfo( 'version' ) . '; ' . home_url(),
+                'Accept'        => 'application/json',
+                'User-Agent'    => 'WordPress/' . get_bloginfo( 'version' ) . '; ' . home_url(),
+                'Cache-Control' => 'no-cache',
             ],
             'timeout'   => 10,
             'sslverify' => true,
@@ -217,5 +232,75 @@ class Ofnoacomps_GitHub_Updater {
      */
     public function flush() {
         delete_transient( $this->transient_key );
+        // Also clear WordPress's own plugin update transient so it re-checks
+        delete_site_transient( 'update_plugins' );
+    }
+
+    /**
+     * Handles the "בדוק עדכונים עכשיו" button click from the Settings page.
+     * Expects: ?ocrm_force_update_check=1 + valid nonce
+     */
+    public function handle_force_check() {
+        if ( ! isset( $_GET['ocrm_force_update_check'] ) ) {
+            return;
+        }
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
+        if ( ! check_admin_referer( 'ocrm_force_update_check' ) ) {
+            return;
+        }
+
+        $this->flush();
+
+        // Redirect back to settings page with a success flag
+        $redirect = add_query_arg(
+            [ 'page' => 'ofnoacomps-crm-settings', 'ocrm_update_checked' => '1' ],
+            admin_url( 'admin.php' )
+        );
+        wp_safe_redirect( $redirect );
+        exit;
+    }
+
+    /**
+     * Registers a REST endpoint for instant cache invalidation from scripts.
+     * POST /wp-json/ofnoacomps-crm/v1/flush-update-cache
+     * Header: X-OCRM-Flush-Token: <value of OCRM_UPDATE_SECRET constant>
+     */
+    public function register_flush_endpoint() {
+        register_rest_route( 'ofnoacomps-crm/v1', '/flush-update-cache', [
+            'methods'             => 'POST',
+            'callback'            => [ $this, 'rest_flush_cache' ],
+            'permission_callback' => '__return_true',
+        ] );
+    }
+
+    /**
+     * REST callback: flushes the update cache if the secret token matches.
+     *
+     * @param WP_REST_Request $req
+     * @return WP_REST_Response
+     */
+    public function rest_flush_cache( $req ) {
+        $secret = defined( 'OCRM_UPDATE_SECRET' ) ? OCRM_UPDATE_SECRET : '';
+
+        if ( empty( $secret ) ) {
+            // If no secret defined, only allow logged-in admins
+            if ( ! current_user_can( 'manage_options' ) ) {
+                return new WP_REST_Response( [ 'error' => 'Unauthorized' ], 403 );
+            }
+        } else {
+            $token = $req->get_header( 'X-OCRM-Flush-Token' );
+            if ( $token !== $secret ) {
+                return new WP_REST_Response( [ 'error' => 'Invalid token' ], 403 );
+            }
+        }
+
+        $this->flush();
+        return new WP_REST_Response( [
+            'flushed'  => true,
+            'plugin'   => $this->plugin_key,
+            'manifest' => self::MANIFEST_URL,
+        ], 200 );
     }
 }
