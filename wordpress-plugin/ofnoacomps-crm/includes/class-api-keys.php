@@ -5,7 +5,7 @@ defined('ABSPATH') || exit;
  * API Key management for Ofnoacomps CRM.
  *
  * Keys format: ocrm_<32 hex chars>
- * Only the SHA-256 hash is stored in the DB — the full key is shown once.
+ * Only the SHA-256 hash is stored in the DB - the full key is shown once.
  */
 class Ofnoacomps_CRM_API_Keys {
 
@@ -22,7 +22,7 @@ class Ofnoacomps_CRM_API_Keys {
 
         $name = sanitize_text_field( $name );
         if ( empty( $name ) ) {
-            return [ 'error' => 'שם המפתח לא יכול להיות ריק' ];
+            return [ 'error' => 'חובה לציין שם למפתח ה-API' ];
         }
 
         // Build key: ocrm_ + 32 hex chars
@@ -31,7 +31,7 @@ class Ofnoacomps_CRM_API_Keys {
         $key_hash  = hash( 'sha256', $raw_key );
         $caps_json = wp_json_encode( array_values( (array) $capabilities ) );
 
-        $result = $wpdb->insert(
+        $wpdb->insert(
             Ofnoacomps_CRM_Database::table( 'api_keys' ),
             [
                 'name'         => $name,
@@ -43,13 +43,18 @@ class Ofnoacomps_CRM_API_Keys {
             ]
         );
 
-        if ( ! $result ) {
-            return [ 'error' => 'שגיאה ביצירת המפתח' ];
+        // Use insert_id as the reliable success indicator.
+        // $wpdb->insert() can return false/0 even on a successful INSERT
+        // (e.g. when MySQL raises a non-fatal warning), so we don't rely on it.
+        $insert_id = (int) $wpdb->insert_id;
+
+        if ( ! $insert_id ) {
+            return [ 'error' => 'שגיאה ביצירת מפתח: ' . ( $wpdb->last_error ?: 'unknown' ) ];
         }
 
         return [
-            'id'     => (int) $wpdb->insert_id,
-            'key'    => $raw_key,   // returned ONCE — never stored in plain text
+            'id'     => $insert_id,
+            'key'    => $raw_key,   // returned ONCE - never stored in plain text
             'prefix' => $prefix,
             'name'   => $name,
         ];
@@ -106,7 +111,7 @@ class Ofnoacomps_CRM_API_Keys {
         foreach ( $rows as &$row ) {
             $row->capabilities = json_decode( $row->capabilities, true ) ?: [];
             $user = get_user_by( 'id', $row->created_by );
-            $row->created_by_name = $user ? $user->display_name : 'מערכת';
+            $row->created_by_name = $user ? $user->display_name : 'מחוק';
         }
 
         return $rows ?: [];

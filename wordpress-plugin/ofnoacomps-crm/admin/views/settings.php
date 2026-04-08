@@ -167,6 +167,7 @@ $api_keys = Ofnoacomps_CRM_API_Keys::list_keys();
             method: 'POST',
             headers: { 'X-WP-Nonce': nonce },
             contentType: 'application/json',
+            dataType: 'json',
             data: JSON.stringify({ name: name, capabilities: caps }),
             success: function(res){
                 var d = res.data;
@@ -187,7 +188,12 @@ $api_keys = Ofnoacomps_CRM_API_Keys::list_keys();
                 if (!$('#ocrm-keys-table-body').length) location.reload();
                 else $('#ocrm-keys-table-body').prepend(row);
             },
-            error: function(){ alert('שגיאה ביצירת המפתח'); }
+            error: function(xhr){
+                var msg = 'שגיאה ביצירת מפתח';
+                try { var r = JSON.parse(xhr.responseText); if (r && r.error) msg = r.error; } catch(e){}
+                console.error('OCRM key error:', xhr.status, xhr.responseText);
+                alert(msg);
+            }
         });
     });
 
@@ -212,7 +218,12 @@ $api_keys = Ofnoacomps_CRM_API_Keys::list_keys();
                 $('#ocrm-key-row-'+id).css('opacity','0.45');
                 $('#ocrm-key-row-'+id+' .ocrm-revoke-key').remove();
             },
-            error: function(){ alert('שגיאה בביטול המפתח'); }
+            error: function(xhr){
+                var msg = 'שגיאה ביצירת מפתח';
+                try { var r = JSON.parse(xhr.responseText); if (r && r.error) msg = r.error; } catch(e){}
+                console.error('OCRM key error:', xhr.status, xhr.responseText);
+                alert(msg);
+            }
         });
     });
 
@@ -225,7 +236,12 @@ $api_keys = Ofnoacomps_CRM_API_Keys::list_keys();
             method: 'DELETE',
             headers: { 'X-WP-Nonce': nonce },
             success: function(){ $('#ocrm-key-row-'+id).fadeOut(300, function(){ $(this).remove(); }); },
-            error: function(){ alert('שגיאה במחיקת המפתח'); }
+            error: function(xhr){
+                var msg = 'שגיאה ביצירת מפתח';
+                try { var r = JSON.parse(xhr.responseText); if (r && r.error) msg = r.error; } catch(e){}
+                console.error('OCRM key error:', xhr.status, xhr.responseText);
+                alert(msg);
+            }
         });
     });
 })(jQuery);

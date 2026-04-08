@@ -355,7 +355,7 @@ class Ofnoacomps_CRM_REST_API {
             get_current_user_id()
         );
         if (isset($result['error'])) return $this->error($result['error'], 400);
-        return $this->success($result, 201);
+        return $this->success($result, 200);
     }
 
     public function revoke_api_key($req) {
@@ -409,3 +409,4 @@ class Ofnoacomps_CRM_REST_API {
         return $clean;
     }
 }
+
