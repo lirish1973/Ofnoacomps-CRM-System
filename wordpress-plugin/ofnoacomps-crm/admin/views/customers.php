@@ -1,4 +1,4 @@
-﻿<?php defined('ABSPATH') || exit; ?>
+<?php defined('ABSPATH') || exit; ?>
 <div class="wrap ocrm-wrap">
 <div class="ocrm-page-header">
     <h1>🏢 לקוחות <span style="font-size:14px;color:#64748b;">(<?php echo number_format($total); ?>)</span></h1>

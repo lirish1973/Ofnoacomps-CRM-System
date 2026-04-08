@@ -1,4 +1,4 @@
-﻿<?php defined('ABSPATH') || exit; ?>
+<?php defined('ABSPATH') || exit; ?>
 <div class="wrap ocrm-wrap">
 
 <div class="ocrm-page-header">

@@ -1,4 +1,4 @@
-﻿<?php defined('ABSPATH') || exit;
+<?php defined('ABSPATH') || exit;
 $currency = get_option('ofnoacomps_crm_currency', '₪');
 ?>
 <div class="wrap ocrm-wrap">

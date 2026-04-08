@@ -1,4 +1,4 @@
-﻿<?php defined('ABSPATH') || exit;
+<?php defined('ABSPATH') || exit;
 if (!$lead) { echo '<p>ליד לא נמצא.</p>'; return; }
 $name = trim($lead->first_name . ' ' . $lead->last_name) ?: '(ללא שם)';
 $sources_map = Ofnoacomps_CRM_Lead::get_sources();

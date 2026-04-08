@@ -1,4 +1,4 @@
-﻿<?php defined('ABSPATH') || exit;
+<?php defined('ABSPATH') || exit;
 if (!$customer) { echo '<p>לקוח לא נמצא.</p>'; return; }
 $name = trim($customer->first_name . ' ' . $customer->last_name) ?: '(ללא שם)';
 $currency = get_option('ofnoacomps_crm_currency', '₪');

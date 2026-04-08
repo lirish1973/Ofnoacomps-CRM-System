@@ -1,4 +1,4 @@
-﻿<?php defined('ABSPATH') || exit;
+<?php defined('ABSPATH') || exit;
 $api_keys = Ofnoacomps_CRM_API_Keys::list_keys();
 ?>
 <div class="wrap ocrm-wrap">

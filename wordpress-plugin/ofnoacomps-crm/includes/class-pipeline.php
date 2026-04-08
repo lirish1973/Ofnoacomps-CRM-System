@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 defined('ABSPATH') || exit;
 
 class Ofnoacomps_CRM_Pipeline {
