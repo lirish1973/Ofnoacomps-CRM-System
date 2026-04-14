@@ -29,6 +29,7 @@ spl_autoload_register(function ($class) {
         'Ofnoacomps_CRM_Admin'      => 'admin/class-admin.php',
         'Ofnoacomps_CRM_REST_API'   => 'api/class-rest-api.php',
         'Ofnoacomps_CRM_API_Keys'   => 'includes/class-api-keys.php',
+        'Ofnoacomps_CRM_Analytics'  => 'includes/class-analytics.php',
     ];
 
     if (isset($map[$class])) {
@@ -69,10 +70,17 @@ function ofnoacomps_crm_init() {
     // Hook into WPForms
     add_action('wpforms_process_complete', 'ofnoacomps_crm_capture_wpforms_lead', 10, 4);
 
+
+    // Analytics AJAX — works for logged-in AND logged-out visitors
+    add_action('wp_ajax_nopriv_ofnoacomps_track_pageview', 'ofnoacomps_crm_ajax_track_pageview');
+    add_action('wp_ajax_ofnoacomps_track_pageview',        'ofnoacomps_crm_ajax_track_pageview');
+    add_action('wp_ajax_nopriv_ofnoacomps_track_event',    'ofnoacomps_crm_ajax_track_event');
+    add_action('wp_ajax_ofnoacomps_track_event',           'ofnoacomps_crm_ajax_track_event');
     // Generic hook — other plugins can call this
     add_action('ofnoacomps_crm_capture_lead', ['Ofnoacomps_CRM_Lead', 'capture'], 10, 1);
 }
 add_action('plugins_loaded', 'ofnoacomps_crm_init');
+add_action('plugins_loaded', ['Ofnoacomps_CRM_Database', 'maybe_upgrade'], 5);
 
 /**
  * Enqueue the UTM tracker script on the frontend.
@@ -181,4 +189,49 @@ function ofnoacomps_crm_get_ip() {
         }
     }
     return '';
+}
+// ── Analytics AJAX handlers ────────────────────────────────────────────────
+
+/**
+ * Record a pageview from the frontend tracker.
+ */
+function ofnoacomps_crm_ajax_track_pageview() {
+    global $wpdb;
+    $table = $wpdb->prefix . 'ofnoacomps_pageviews';
+    $wpdb->insert($table, [
+        'session_id'   => sanitize_text_field(isset($_POST['session_id'])   ? $_POST['session_id']   : ''),
+        'page_url'     => esc_url_raw(isset($_POST['page_url'])              ? $_POST['page_url']     : ''),
+        'page_title'   => sanitize_text_field(isset($_POST['page_title'])   ? $_POST['page_title']   : ''),
+        'referrer'     => esc_url_raw(isset($_POST['referrer'])              ? $_POST['referrer']     : ''),
+        'source'       => sanitize_text_field(isset($_POST['source'])       ? $_POST['source']       : 'direct'),
+        'medium'       => sanitize_text_field(isset($_POST['medium'])       ? $_POST['medium']       : ''),
+        'campaign'     => sanitize_text_field(isset($_POST['campaign'])     ? $_POST['campaign']     : ''),
+        'utm_term'     => sanitize_text_field(isset($_POST['utm_term'])     ? $_POST['utm_term']     : ''),
+        'utm_content'  => sanitize_text_field(isset($_POST['utm_content'])  ? $_POST['utm_content']  : ''),
+        'landing_page' => esc_url_raw(isset($_POST['landing_page'])         ? $_POST['landing_page'] : ''),
+        'device_type'  => sanitize_text_field(isset($_POST['device_type'])  ? $_POST['device_type']  : ''),
+        'ip_address'   => ofnoacomps_crm_get_ip(),
+    ]);
+    wp_send_json_success(['ok' => true]);
+}
+
+/**
+ * Record a click / button event from the frontend tracker.
+ */
+function ofnoacomps_crm_ajax_track_event() {
+    global $wpdb;
+    $table = $wpdb->prefix . 'ofnoacomps_events';
+    $wpdb->insert($table, [
+        'session_id'  => sanitize_text_field(isset($_POST['session_id'])  ? $_POST['session_id']  : ''),
+        'event_type'  => sanitize_text_field(isset($_POST['event_type'])  ? $_POST['event_type']  : ''),
+        'event_label' => sanitize_text_field(isset($_POST['event_label']) ? $_POST['event_label'] : ''),
+        'event_value' => sanitize_text_field(isset($_POST['event_value']) ? $_POST['event_value'] : ''),
+        'page_url'    => esc_url_raw(isset($_POST['page_url'])             ? $_POST['page_url']    : ''),
+        'source'      => sanitize_text_field(isset($_POST['source'])      ? $_POST['source']      : 'direct'),
+        'medium'      => sanitize_text_field(isset($_POST['medium'])      ? $_POST['medium']      : ''),
+        'campaign'    => sanitize_text_field(isset($_POST['campaign'])    ? $_POST['campaign']    : ''),
+        'device_type' => sanitize_text_field(isset($_POST['device_type']) ? $_POST['device_type'] : ''),
+        'ip_address'  => ofnoacomps_crm_get_ip(),
+    ]);
+    wp_send_json_success(['ok' => true]);
 }

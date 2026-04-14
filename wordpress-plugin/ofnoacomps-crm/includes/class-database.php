@@ -3,7 +3,7 @@ defined('ABSPATH') || exit;
 
 class Ofnoacomps_CRM_Database {
 
-    const SCHEMA_VERSION = '1.0.0';
+    const SCHEMA_VERSION = '1.1.0';
 
     public static function install() {
         global $wpdb;
@@ -186,6 +186,49 @@ class Ofnoacomps_CRM_Database {
             KEY idx_active (is_active)
         ) $charset;");
         // Seed default pipeline + stages if none exist
+
+        // --- Pageviews -------------------------------------------------------
+        dbDelta("CREATE TABLE {$wpdb->prefix}ofnoacomps_pageviews (
+            id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            session_id   VARCHAR(64)   NOT NULL DEFAULT '',
+            page_url     VARCHAR(500)  NOT NULL DEFAULT '',
+            page_title   VARCHAR(300)  NOT NULL DEFAULT '',
+            referrer     VARCHAR(500)  NOT NULL DEFAULT '',
+            source       VARCHAR(100)  NOT NULL DEFAULT 'direct',
+            medium       VARCHAR(100)  NOT NULL DEFAULT '',
+            campaign     VARCHAR(200)  NOT NULL DEFAULT '',
+            utm_term     VARCHAR(200)  NOT NULL DEFAULT '',
+            utm_content  VARCHAR(200)  NOT NULL DEFAULT '',
+            landing_page VARCHAR(500)  NOT NULL DEFAULT '',
+            device_type  VARCHAR(30)   NOT NULL DEFAULT '',
+            ip_address   VARCHAR(45)   NOT NULL DEFAULT '',
+            created_at   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY idx_session (session_id),
+            KEY idx_source  (source),
+            KEY idx_created (created_at)
+        ) $charset;");
+
+        // --- Click / Button Events -------------------------------------------
+        dbDelta("CREATE TABLE {$wpdb->prefix}ofnoacomps_events (
+            id           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            session_id   VARCHAR(64)   NOT NULL DEFAULT '',
+            event_type   VARCHAR(50)   NOT NULL DEFAULT '',
+            event_label  VARCHAR(300)  NOT NULL DEFAULT '',
+            event_value  VARCHAR(500)  NOT NULL DEFAULT '',
+            page_url     VARCHAR(500)  NOT NULL DEFAULT '',
+            source       VARCHAR(100)  NOT NULL DEFAULT 'direct',
+            medium       VARCHAR(100)  NOT NULL DEFAULT '',
+            campaign     VARCHAR(200)  NOT NULL DEFAULT '',
+            device_type  VARCHAR(30)   NOT NULL DEFAULT '',
+            ip_address   VARCHAR(45)   NOT NULL DEFAULT '',
+            created_at   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY idx_session    (session_id),
+            KEY idx_event_type (event_type),
+            KEY idx_source     (source),
+            KEY idx_created    (created_at)
+        ) $charset;");
         self::seed_defaults();
 
         update_option('ofnoacomps_crm_schema_version', self::SCHEMA_VERSION);
@@ -202,6 +245,7 @@ class Ofnoacomps_CRM_Database {
             'ofnoacomps_stages', 'ofnoacomps_deals', 'ofnoacomps_activities',
             'ofnoacomps_deal_stage_log', 'ofnoacomps_lead_status_log',
             'ofnoacomps_api_keys',
+            'ofnoacomps_pageviews', 'ofnoacomps_events',
         ];
         foreach ($tables as $t) {
             $wpdb->query("DROP TABLE IF EXISTS {$wpdb->prefix}{$t}");
@@ -240,6 +284,16 @@ class Ofnoacomps_CRM_Database {
 
     // ── Helpers ──────────────────────────────────────────────────────────────
 
+
+    /**
+     * Run on plugins_loaded to create analytics tables on existing installs.
+     */
+    public static function maybe_upgrade() {
+        $current = get_option('ofnoacomps_crm_schema_version', '0');
+        if (version_compare($current, self::SCHEMA_VERSION, '<')) {
+            self::install();
+        }
+    }
     public static function table($name) {
         global $wpdb;
         return $wpdb->prefix . 'ofnoacomps_' . $name;

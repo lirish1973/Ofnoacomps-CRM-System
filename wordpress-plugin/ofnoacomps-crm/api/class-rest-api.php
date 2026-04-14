@@ -98,8 +98,36 @@ class Ofnoacomps_CRM_REST_API {
             ['methods' => 'GET',  'callback' => [$this, 'list_api_keys'],   'permission_callback' => [$this, 'can_admin']],
             ['methods' => 'POST', 'callback' => [$this, 'create_api_key'],  'permission_callback' => [$this, 'can_admin']],
         ]);
+
+        // -- Analytics --------------------------------------------------------
+        register_rest_route(self::NS, '/analytics/summary', [
+            ['methods' => 'GET', 'callback' => [$this, 'analytics_summary'],   'permission_callback' => [$this, 'can_manage']],
+        ]);
+        register_rest_route(self::NS, '/analytics/pageviews', [
+            ['methods' => 'GET', 'callback' => [$this, 'analytics_pageviews'], 'permission_callback' => [$this, 'can_manage']],
+        ]);
+        register_rest_route(self::NS, '/analytics/events', [
+            ['methods' => 'GET', 'callback' => [$this, 'analytics_events'],    'permission_callback' => [$this, 'can_manage']],
+        ]);
+        register_rest_route(self::NS, '/analytics/sources', [
+            ['methods' => 'GET', 'callback' => [$this, 'analytics_sources'],   'permission_callback' => [$this, 'can_manage']],
+        ]);
         register_rest_route(self::NS, '/api-keys/(?P<id>\d+)', [
             ['methods' => 'DELETE', 'callback' => [$this, 'delete_api_key'], 'permission_callback' => [$this, 'can_admin']],
+        ]);
+
+        // -- Analytics --------------------------------------------------------
+        register_rest_route(self::NS, '/analytics/summary', [
+            ['methods' => 'GET', 'callback' => [$this, 'analytics_summary'],   'permission_callback' => [$this, 'can_manage']],
+        ]);
+        register_rest_route(self::NS, '/analytics/pageviews', [
+            ['methods' => 'GET', 'callback' => [$this, 'analytics_pageviews'], 'permission_callback' => [$this, 'can_manage']],
+        ]);
+        register_rest_route(self::NS, '/analytics/events', [
+            ['methods' => 'GET', 'callback' => [$this, 'analytics_events'],    'permission_callback' => [$this, 'can_manage']],
+        ]);
+        register_rest_route(self::NS, '/analytics/sources', [
+            ['methods' => 'GET', 'callback' => [$this, 'analytics_sources'],   'permission_callback' => [$this, 'can_manage']],
         ]);
         register_rest_route(self::NS, '/api-keys/(?P<id>\d+)/revoke', [
             ['methods' => 'POST', 'callback' => [$this, 'revoke_api_key'],  'permission_callback' => [$this, 'can_admin']],

@@ -5,6 +5,7 @@ import Customers from './Customers'
 import Pipeline from './Pipeline'
 import Reports from './Reports'
 import SiteSettings from './SiteSettings'
+import Analytics from './Analytics'
 
 const TABS = [
   { id: 'dashboard',  label: 'דשבורד',   icon: '📊' },
@@ -12,6 +13,7 @@ const TABS = [
   { id: 'customers',  label: 'לקוחות',    icon: '🏢' },
   { id: 'pipeline',   label: 'Pipeline',  icon: '🔄' },
   { id: 'reports',    label: 'דוחות',     icon: '📈' },
+  { id: 'analytics',  label: 'אנליטיקס',  icon: '📊' },
   { id: 'settings',   label: 'הגדרות',    icon: '⚙️' },
 ]
 
@@ -25,6 +27,7 @@ export default function SiteView({ site, onUpdateSite }) {
       case 'customers': return <Customers site={site} />
       case 'pipeline':  return <Pipeline site={site} />
       case 'reports':   return <Reports site={site} />
+      case 'analytics': return <Analytics site={site} />
       case 'settings':  return <SiteSettings mode="edit" site={site} onSave={d => onUpdateSite(site.id, d)} />
       default:          return null
     }
