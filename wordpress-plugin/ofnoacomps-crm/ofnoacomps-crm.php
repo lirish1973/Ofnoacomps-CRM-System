@@ -3,7 +3,7 @@
  * Plugin Name: Ofnoacomps CRM
  * Plugin URI:  https://www.ofnoacomps.co.il
  * Description: מערכת CRM מלאה לניהול לידים, לקוחות, עסקאות ודוחות עם מעקב מקור תנועה.
- * Version:     1.3.7
+ * Version:     1.3.8
  * Author:      Ofnoacomps
  * Text Domain: ofnoacomps-crm
  * Domain Path: /languages
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('OFNOACOMPS_CRM_VERSION',     '1.3.7');
+define('OFNOACOMPS_CRM_VERSION',     '1.3.8');
 define('OFNOACOMPS_CRM_PLUGIN_DIR',  plugin_dir_path(__FILE__));
 define('OFNOACOMPS_CRM_PLUGIN_URL',  plugin_dir_url(__FILE__));
 define('OFNOACOMPS_CRM_PLUGIN_FILE', __FILE__);
