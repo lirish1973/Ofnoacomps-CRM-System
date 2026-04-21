@@ -3,7 +3,7 @@
 # updates version strings, updates plugin-updates.json, commits and pushes.
 #
 # Usage:
-#   .\release-plugin.ps1 -Plugin ofnoacomps-crm -Version 1.3.7
+#   .\release-plugin.ps1 -Plugin ofnoacomps-crm -Version 1.4.2
 #   .\release-plugin.ps1 -Plugin smart-cart-recovery -Version 1.2.0
 
 param(
@@ -181,27 +181,62 @@ $ZipSizeKB = [math]::Round((Get-Item $NewZipPath).Length / 1KB, 1)
 Write-Host "   OK: $($Cfg.NewZipName) ($ZipSizeKB KB)" -ForegroundColor Green
 
 # ---------------------------------------------------------------
-# Step 5: Update plugin-updates.json
+# Step 5: Update plugin-updates.json (Python - preserves UTF-8/Hebrew)
 # ---------------------------------------------------------------
 Write-Host "[5/6] Updating plugin-updates.json..." -ForegroundColor Yellow
 
-$Manifest = Get-Content $ManifestFile -Raw | ConvertFrom-Json
-if (-not ($Manifest.PSObject.Properties.Name -contains $Plugin)) {
-    Remove-Item $TempDir -Recurse -Force
-    Write-Error "Key '$Plugin' not found in plugin-updates.json"
-    exit 1
+$PyScript = @"
+import json, sys
+manifest_path = sys.argv[1]
+plugin_key    = sys.argv[2]
+new_version   = sys.argv[3]
+download_url  = sys.argv[4]
+today         = sys.argv[5]
+
+with open(manifest_path, 'r', encoding='utf-8') as f:
+    m = json.load(f)
+
+if plugin_key not in m:
+    print(f'ERROR: key {plugin_key} not found in manifest', file=sys.stderr)
+    sys.exit(1)
+
+m[plugin_key]['version']      = new_version
+m[plugin_key]['download_url'] = download_url
+m[plugin_key]['last_updated'] = today
+
+with open(manifest_path, 'w', encoding='utf-8') as f:
+    json.dump(m, f, ensure_ascii=False, indent=2)
+
+print(f'OK: version={new_version}, last_updated={today}')
+"@
+
+$PyScriptPath = Join-Path $RepoRoot "_release_update_manifest.py"
+[System.IO.File]::WriteAllText($PyScriptPath, $PyScript, $Utf8NoBom)
+
+$PyExe = @('python', 'python3', 'py') | ForEach-Object {
+    $p = Get-Command $_ -ErrorAction SilentlyContinue
+    if ($p) { $p.Source }
+} | Select-Object -First 1
+
+if ($PyExe) {
+    & $PyExe $PyScriptPath $ManifestFile $Plugin $Version $Cfg.DownloadUrl $Today
+    if ($LASTEXITCODE -ne 0) { throw "Python manifest update failed" }
+} else {
+    # Fallback: PowerShell ConvertTo-Json (may escape Hebrew as \uXXXX — still valid JSON)
+    Write-Warning "Python not found - using PowerShell fallback (Hebrew stored as \u escapes)"
+    $Manifest = Get-Content $ManifestFile -Raw | ConvertFrom-Json
+    $Manifest.$Plugin.version      = $Version
+    $Manifest.$Plugin.download_url = $Cfg.DownloadUrl
+    $Manifest.$Plugin.last_updated = $Today
+    $JsonOut = $Manifest | ConvertTo-Json -Depth 5
+    [System.IO.File]::WriteAllText($ManifestFile, $JsonOut, $Utf8NoBom)
 }
 
-$Manifest.$Plugin.version      = $Version
-$Manifest.$Plugin.download_url = $Cfg.DownloadUrl
-$Manifest.$Plugin.last_updated = $Today
-
-$JsonOut = $Manifest | ConvertTo-Json -Depth 5
-[System.IO.File]::WriteAllText($ManifestFile, $JsonOut, $Utf8NoBom)
+Remove-Item $PyScriptPath -Force -ErrorAction SilentlyContinue
 Write-Host "   OK: version=$Version, last_updated=$Today" -ForegroundColor Green
 
 # ---------------------------------------------------------------
-# Step 6: git add / commit / pull-rebase / push
+# Step 6: git add / commit / auto-stash / pull-rebase / push / pop
 # ---------------------------------------------------------------
 Write-Host "[6/6] Committing and pushing to GitHub..." -ForegroundColor Yellow
 
@@ -219,6 +254,7 @@ if (-not $GitExe) {
     Write-Warning "git not found - skipping commit/push. Push manually."
 } else {
     Push-Location $RepoRoot
+    $Stashed = $false
     try {
         $RelativeZip  = "wordpress-plugin/$($Cfg.NewZipName)"
         $RelativeMain = "wordpress-plugin/$Plugin/$($Cfg.MainFile)"
@@ -230,12 +266,28 @@ if (-not $GitExe) {
 
         & $GitExe commit -m "release: $Plugin v$Version"
 
-        # Pull rebase first to avoid rejection if GitHub Actions pushed in parallel
+        # --- Auto-stash any unstaged/untracked changes before rebase ---
+        $DirtyLines = & $GitExe status --porcelain 2>&1
+        if ($DirtyLines) {
+            Write-Host "   Auto-stashing local changes before rebase..." -ForegroundColor Gray
+            & $GitExe stash push -u -m "pre-release-rebase-$Plugin-$Version"
+            $Stashed = $true
+            Write-Host "   Stash saved." -ForegroundColor Gray
+        }
+
+        # Pull rebase to stay in sync with GitHub Actions or parallel pushes
         & $GitExe pull --rebase origin main
 
         & $GitExe push origin main
         Write-Host "   OK: pushed to GitHub" -ForegroundColor Green
+
     } finally {
+        # Always restore stashed changes — even if push failed
+        if ($Stashed) {
+            Write-Host "   Restoring stashed changes..." -ForegroundColor Gray
+            & $GitExe stash pop
+            Write-Host "   Local changes restored." -ForegroundColor Gray
+        }
         Pop-Location
     }
 }
@@ -243,7 +295,7 @@ if (-not $GitExe) {
 # ---------------------------------------------------------------
 # Cleanup
 # ---------------------------------------------------------------
-Remove-Item $TempDir -Recurse -Force
+Remove-Item $TempDir -Recurse -Force -ErrorAction SilentlyContinue
 
 Write-Host ""
 Write-Host "=============================================" -ForegroundColor Green
