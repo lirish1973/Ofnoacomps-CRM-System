@@ -1,6 +1,6 @@
 name: Auto-Update Plugin Manifest
 
-# Safety net: runs only when PHP files change.
+# Safety net: runs when PHP files OR plugin assets change.
 # Skips entirely if plugin-updates.json already has the correct version
 # (meaning release.bat already did the work).
 # Uses git pull --rebase before push to handle any race conditions.
@@ -11,6 +11,9 @@ on:
     paths:
       - 'wordpress-plugin/ofnoacomps-crm/**/*.php'
       - 'wordpress-plugin/ofnoacomps-crm/*.php'
+      - 'wordpress-plugin/ofnoacomps-crm/assets/**'
+      - 'wordpress-plugin/ofnoacomps-crm/assets/*.js'
+      - 'wordpress-plugin/ofnoacomps-crm/assets/*.css'
 
 jobs:
   update-manifest:

@@ -1,8 +1,12 @@
-const express = require('express')
-const cors    = require('cors')
-const path    = require('path')
-const fs      = require('fs')
-const axios   = require('axios')
+// ── Load environment variables from .env ──────────────────────────────────────
+require('dotenv').config({ path: require('path').join(__dirname, '../.env') })
+
+const express  = require('express')
+const cors     = require('cors')
+const path     = require('path')
+const fs       = require('fs')
+const axios    = require('axios')
+const nodemailer = require('nodemailer')
 
 const app  = express()
 const PORT = 3001
@@ -25,14 +29,14 @@ function buildAuthHeaders(site) {
     return { Authorization: 'Basic ' + Buffer.from(`${site.username}:${site.appPassword}`).toString('base64') }
   }
   if (site && site.apiKey) {
-    return { 'X-HOCO-API-Key': site.apiKey }
+    return { 'X-API-Key': site.apiKey }
   }
   return {}
 }
 
 // ── WordPress proxy request ───────────────────────────────────────────────────
 async function wpRequest(site, method, wpPath, data = null) {
-  const url = site.url.replace(/\/$/, '') + '/wp-json/hoco-crm/v1' + wpPath
+  const url = site.url.replace(/\/$/, '') + '/wp-json/ofnoacomps-crm/v1' + wpPath
   const cfg = { method, url, headers: { 'Content-Type': 'application/json', ...buildAuthHeaders(site) }, timeout: 15000 }
   if (data) cfg.data = data
   return (await axios(cfg)).data
@@ -72,8 +76,8 @@ app.post('/api/test-connection', async (req, res) => {
   try {
     const headers = username && appPassword
       ? { Authorization: 'Basic ' + Buffer.from(`${username}:${appPassword}`).toString('base64') }
-      : { 'X-HOCO-API-Key': apiKey }
-    await axios.get(url.replace(/\/$/, '') + '/wp-json/hoco-crm/v1/reports/summary', { headers, timeout: 8000 })
+      : { 'X-API-Key': apiKey }
+    await axios.get(url.replace(/\/$/, '') + '/wp-json/ofnoacomps-crm/v1/reports/summary', { headers, timeout: 8000 })
     res.json({ ok: true })
   } catch (e) {
     const st  = e.response?.status
@@ -106,7 +110,10 @@ app.all('/api/sites/:siteId/proxy/*', async (req, res) => {
 })
 
 // ── Health ────────────────────────────────────────────────────────────────────
-app.get('/api/health', (req, res) => res.json({ ok: true, sites: loadSites().length, version: '1.1.0' }))
+app.get('/api/health', (req, res) => {
+  const emailConfigured = !!process.env.EMAIL_PASS
+  res.json({ ok: true, sites: loadSites().length, version: '1.1.0', emailConfigured })
+})
 
 // ── Ping all sites every 60s ──────────────────────────────────────────────────
 async function pingAllSites() {
@@ -114,7 +121,7 @@ async function pingAllSites() {
   for (const site of sites) {
     const was = site.status
     try {
-      await axios.get(site.url.replace(/\/$/,'') + '/wp-json/hoco-crm/v1/reports/summary', { headers: buildAuthHeaders(site), timeout: 5000 })
+      await axios.get(site.url.replace(/\/$/,'') + '/wp-json/ofnoacomps-crm/v1/reports/summary', { headers: buildAuthHeaders(site), timeout: 5000 })
       site.status = 'online'
     } catch {
       site.status = 'error'
@@ -126,7 +133,107 @@ async function pingAllSites() {
 setInterval(pingAllSites, 60_000)
 pingAllSites()
 
+// ── Email (nodemailer) ────────────────────────────────────────────────────────
+const EMAIL_USER = process.env.EMAIL_USER || 'ofnoacomps@gmail.com'
+const EMAIL_PASS = process.env.EMAIL_PASS || ''
+
+let transporter = null
+
+function getTransporter() {
+  if (!transporter && EMAIL_PASS) {
+    transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: EMAIL_USER, pass: EMAIL_PASS }
+    })
+  }
+  return transporter
+}
+
+// ── POST /api/elementor/leads ─────────────────────────────────────────────────
+app.post('/api/elementor/leads', async (req, res) => {
+  try {
+    const leadData = req.body
+    if (!leadData || Object.keys(leadData).length === 0) {
+      return res.status(400).json({ error: 'No lead data provided' })
+    }
+
+    const mailer = getTransporter()
+
+    if (!mailer) {
+      console.warn('⚠️  EMAIL_PASS לא מוגדר — הליד נשמר אך מייל לא נשלח.')
+      // שמור ליד בלי מייל
+      return saveLeadFile(leadData, false, res)
+    }
+
+    const rows = Object.entries(leadData)
+      .map(([k, v]) => `<tr><td style="padding:8px 12px;border-bottom:1px solid #eee;background:#f9f9f9;font-weight:bold;width:130px;">${k}</td><td style="padding:8px 12px;border-bottom:1px solid #eee;">${v}</td></tr>`)
+      .join('')
+
+    const html = `<!DOCTYPE html><html dir="rtl" lang="he">
+<head><meta charset="UTF-8"></head>
+<body style="font-family:Arial,sans-serif;background:#f0f0f0;margin:0;padding:20px;">
+  <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.1);">
+    <div style="background:#16a34a;padding:20px 24px;">
+      <h2 style="color:#fff;margin:0;font-size:20px;">&#128640; ליד חדש מאתר TRYIT</h2>
+      <p style="color:#bbf7d0;margin:4px 0 0;font-size:13px;">${new Date().toLocaleString('he-IL')}</p>
+    </div>
+    <table style="width:100%;border-collapse:collapse;">${rows}</table>
+    <div style="padding:14px 24px;background:#f9f9f9;border-top:1px solid #eee;font-size:11px;color:#888;">
+      נשלח אוטומטית על ידי Ofnoacomps CRM
+    </div>
+  </div>
+</body></html>`
+
+    await mailer.sendMail({
+      from:    `"Ofnoacomps CRM" <${EMAIL_USER}>`,
+      to:      EMAIL_USER,
+      subject: 'ליד מכירה מאתר TRYIT',
+      html,
+      replyTo: leadData.email || leadData.Email || EMAIL_USER
+    })
+
+    console.log('📧 מייל נשלח בהצלחה על ליד חדש')
+    return saveLeadFile(leadData, true, res)
+
+  } catch (error) {
+    console.error('❌ שגיאה בעיבוד ליד:', error.message)
+    res.status(500).json({ error: 'Failed to process lead', details: error.message })
+  }
+})
+
+function saveLeadFile(leadData, emailSent, res) {
+  try {
+    const leadsDir = path.join(__dirname, '../_leads')
+    if (!fs.existsSync(leadsDir)) fs.mkdirSync(leadsDir, { recursive: true })
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
+    const leadFile  = path.join(leadsDir, `lead_${timestamp}.json`)
+    fs.writeFileSync(leadFile, JSON.stringify({ timestamp: new Date().toISOString(), data: leadData, emailSent }, null, 2))
+    res.status(200).json({ status: 'success', message: emailSent ? 'Lead received and email sent' : 'Lead captured (no email)', leadId: timestamp })
+  } catch (e) {
+    res.status(500).json({ error: e.message })
+  }
+}
+
+// ── GET /api/elementor/leads ──────────────────────────────────────────────────
+app.get('/api/elementor/leads', (req, res) => {
+  try {
+    const leadsDir = path.join(__dirname, '../_leads')
+    if (!fs.existsSync(leadsDir)) return res.json({ count: 0, leads: [] })
+    const files = fs.readdirSync(leadsDir)
+      .filter(f => f.startsWith('lead_') && f.endsWith('.json'))
+      .sort().reverse()
+    const leads = files.map(f => JSON.parse(fs.readFileSync(path.join(leadsDir, f), 'utf8')))
+    res.json({ count: leads.length, leads })
+  } catch (error) {
+    res.status(500).json({ error: error.message })
+  }
+})
+
+// ── Start ─────────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`\u{1F680} Ofnoacomps CRM Server v1.1 running on http://localhost:${PORT}`)
-  console.log(`   Sites: ${SITES_FILE}`)
+  console.log(`\n🚀 Ofnoacomps CRM Server v1.1 — http://localhost:${PORT}`)
+  console.log(`   Sites file : ${SITES_FILE}`)
+  console.log(`   Email user : ${EMAIL_USER}`)
+  console.log(`   Email pass : ${EMAIL_PASS ? '✅ מוגדר' : '❌ חסר — הגדר EMAIL_PASS ב-.env'}`)
+  console.log(`   Leads POST : POST /api/elementor/leads\n`)
 })

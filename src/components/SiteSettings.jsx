@@ -131,7 +131,7 @@ export default function SiteSettings({ onSave, onCancel, initial = {} }) {
         <div className="space-y-2 bg-gray-50 rounded-lg p-4">
           <div>
             <label className={labelCls}>מפתח API (מההגדרות של הפלאגין) *</label>
-            <input className={inputCls} placeholder="hoco_..." dir="ltr"
+            <input className={inputCls} placeholder="ocrm_..." dir="ltr"
               type="password"
               value={form.apiKey} onChange={e => set('apiKey', e.target.value)} />
           </div>
