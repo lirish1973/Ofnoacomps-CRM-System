@@ -6,6 +6,4 @@ server/sites.json
 .DS_Store
 _debug_tmp/
 push-out.txt
-CLAUDE-MEMORY.md
-MEMORY-ELEMENTOR-SETUP.md
 _release_tmp/
