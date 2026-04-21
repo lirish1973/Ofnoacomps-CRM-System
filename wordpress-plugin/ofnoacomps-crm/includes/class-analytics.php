@@ -149,6 +149,67 @@ class Ofnoacomps_CRM_Analytics {
         ];
     }
 
+    // ── E-commerce / Cart summary ─────────────────────────────────────────────────
+
+    public static function get_ecommerce_summary(array $args = []): array {
+        global $wpdb;
+        [$from, $to] = self::date_range($args);
+        $ev_table = $wpdb->prefix . 'ofnoacomps_events';
+
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT event_type, COUNT(*) as cnt, COUNT(DISTINCT session_id) as unique_sessions
+             FROM {$ev_table}
+             WHERE event_type IN ('add_to_cart','view_cart','remove_from_cart','checkout_start','checkout_complete','cart_abandonment')
+             AND created_at BETWEEN %s AND %s
+             GROUP BY event_type",
+            $from, $to
+        ), ARRAY_A);
+
+        $map = [];
+        foreach ($rows as $row) {
+            $map[$row['event_type']] = [
+                'count'           => (int) $row['cnt'],
+                'unique_sessions' => (int) $row['unique_sessions'],
+            ];
+        }
+
+        $cart_adds       = $map['add_to_cart']['count']       ?? 0;
+        $cart_views      = $map['view_cart']['count']          ?? 0;
+        $checkout_starts = $map['checkout_start']['count']     ?? 0;
+        $completions     = $map['checkout_complete']['count']  ?? 0;
+        $abandonments    = $map['cart_abandonment']['count']   ?? 0;
+        $removals        = $map['remove_from_cart']['count']   ?? 0;
+
+        $abandonment_rate = $cart_adds > 0 ? round(($abandonments / $cart_adds) * 100, 1) : 0;
+        $checkout_rate    = $cart_adds > 0 ? round(($checkout_starts / $cart_adds) * 100, 1) : 0;
+        $completion_rate  = $checkout_starts > 0 ? round(($completions / $checkout_starts) * 100, 1) : 0;
+
+        // Funnel over time (daily)
+        $funnel_over_time = $wpdb->get_results($wpdb->prepare(
+            "SELECT DATE_FORMAT(created_at, '%Y-%m-%d') as period, event_type, COUNT(*) as count
+             FROM {$ev_table}
+             WHERE event_type IN ('add_to_cart','checkout_start','checkout_complete','cart_abandonment')
+             AND created_at BETWEEN %s AND %s
+             GROUP BY period, event_type ORDER BY period ASC",
+            $from, $to
+        ), ARRAY_A) ?: [];
+
+        return [
+            'cart_adds'        => $cart_adds,
+            'cart_views'       => $cart_views,
+            'checkout_starts'  => $checkout_starts,
+            'completions'      => $completions,
+            'abandonments'     => $abandonments,
+            'removals'         => $removals,
+            'abandonment_rate' => $abandonment_rate,
+            'checkout_rate'    => $checkout_rate,
+            'completion_rate'  => $completion_rate,
+            'funnel_over_time' => $funnel_over_time,
+            'date_from'        => $from,
+            'date_to'          => $to,
+        ];
+    }
+
     // ── Traffic sources ───────────────────────────────────────────────────
 
     public static function get_traffic_sources(array $args = []): array {

@@ -20,8 +20,8 @@ class Ofnoacomps_CRM_REST_API {
             ['methods' => 'POST', 'callback' => [$this, 'convert_lead'], 'permission_callback' => [$this, 'can_manage']],
         ]);
         register_rest_route(self::NS, '/leads/(?P<id>\d+)/activities', [
-            ['methods' => 'GET',  'callback' => [$this, 'lead_activities'],  'permission_callback' => [$this, 'can_manage']],
-            ['methods' => 'POST', 'callback' => [$this, 'add_lead_activity'],'permission_callback' => [$this, 'can_manage']],
+            ['methods' => 'GET',  'callback' => [$this, 'lead_activities'],   'permission_callback' => [$this, 'can_manage']],
+            ['methods' => 'POST', 'callback' => [$this, 'add_lead_activity'], 'permission_callback' => [$this, 'can_manage']],
         ]);
 
         // ── Customers ────────────────────────────────────────────────────────
@@ -35,8 +35,8 @@ class Ofnoacomps_CRM_REST_API {
             ['methods' => 'DELETE', 'callback' => [$this, 'delete_customer'], 'permission_callback' => [$this, 'can_manage']],
         ]);
         register_rest_route(self::NS, '/customers/(?P<id>\d+)/activities', [
-            ['methods' => 'GET',  'callback' => [$this, 'customer_activities'],  'permission_callback' => [$this, 'can_manage']],
-            ['methods' => 'POST', 'callback' => [$this, 'add_customer_activity'],'permission_callback' => [$this, 'can_manage']],
+            ['methods' => 'GET',  'callback' => [$this, 'customer_activities'],   'permission_callback' => [$this, 'can_manage']],
+            ['methods' => 'POST', 'callback' => [$this, 'add_customer_activity'], 'permission_callback' => [$this, 'can_manage']],
         ]);
         register_rest_route(self::NS, '/customers/(?P<id>\d+)/deals', [
             ['methods' => 'GET', 'callback' => [$this, 'customer_deals'], 'permission_callback' => [$this, 'can_manage']],
@@ -44,8 +44,8 @@ class Ofnoacomps_CRM_REST_API {
 
         // ── Deals ────────────────────────────────────────────────────────────
         register_rest_route(self::NS, '/deals', [
-            ['methods' => 'GET',  'callback' => [$this, 'list_deals'],   'permission_callback' => [$this, 'can_manage']],
-            ['methods' => 'POST', 'callback' => [$this, 'create_deal'],  'permission_callback' => [$this, 'can_manage']],
+            ['methods' => 'GET',  'callback' => [$this, 'list_deals'],  'permission_callback' => [$this, 'can_manage']],
+            ['methods' => 'POST', 'callback' => [$this, 'create_deal'], 'permission_callback' => [$this, 'can_manage']],
         ]);
         register_rest_route(self::NS, '/deals/(?P<id>\d+)', [
             ['methods' => 'GET',    'callback' => [$this, 'get_deal'],    'permission_callback' => [$this, 'can_manage']],
@@ -92,47 +92,36 @@ class Ofnoacomps_CRM_REST_API {
             ['methods' => 'GET', 'callback' => [$this, 'report_leaderboard'], 'permission_callback' => [$this, 'can_manage']],
         ]);
 
-
-        // ── API Keys (admin only) ─────────────────────────────────────────────
-        register_rest_route(self::NS, '/api-keys', [
-            ['methods' => 'GET',  'callback' => [$this, 'list_api_keys'],   'permission_callback' => [$this, 'can_admin']],
-            ['methods' => 'POST', 'callback' => [$this, 'create_api_key'],  'permission_callback' => [$this, 'can_admin']],
-        ]);
-
-        // -- Analytics --------------------------------------------------------
+        // ── Analytics ────────────────────────────────────────────────────────
         register_rest_route(self::NS, '/analytics/summary', [
-            ['methods' => 'GET', 'callback' => [$this, 'analytics_summary'],   'permission_callback' => [$this, 'can_manage']],
+            ['methods' => 'GET', 'callback' => [$this, 'analytics_summary'], 'permission_callback' => [$this, 'can_manage']],
         ]);
         register_rest_route(self::NS, '/analytics/pageviews', [
             ['methods' => 'GET', 'callback' => [$this, 'analytics_pageviews'], 'permission_callback' => [$this, 'can_manage']],
         ]);
         register_rest_route(self::NS, '/analytics/events', [
-            ['methods' => 'GET', 'callback' => [$this, 'analytics_events'],    'permission_callback' => [$this, 'can_manage']],
+            ['methods' => 'GET', 'callback' => [$this, 'analytics_events'], 'permission_callback' => [$this, 'can_manage']],
         ]);
         register_rest_route(self::NS, '/analytics/sources', [
-            ['methods' => 'GET', 'callback' => [$this, 'analytics_sources'],   'permission_callback' => [$this, 'can_manage']],
+            ['methods' => 'GET', 'callback' => [$this, 'analytics_sources'], 'permission_callback' => [$this, 'can_manage']],
+        ]);
+        register_rest_route(self::NS, '/analytics/ecommerce', [
+            ['methods' => 'GET', 'callback' => [$this, 'analytics_ecommerce'], 'permission_callback' => [$this, 'can_manage']],
+        ]);
+
+        // ── API Keys (admin only) ─────────────────────────────────────────────
+        register_rest_route(self::NS, '/api-keys', [
+            ['methods' => 'GET',  'callback' => [$this, 'list_api_keys'],  'permission_callback' => [$this, 'can_admin']],
+            ['methods' => 'POST', 'callback' => [$this, 'create_api_key'], 'permission_callback' => [$this, 'can_admin']],
         ]);
         register_rest_route(self::NS, '/api-keys/(?P<id>\d+)', [
             ['methods' => 'DELETE', 'callback' => [$this, 'delete_api_key'], 'permission_callback' => [$this, 'can_admin']],
         ]);
-
-        // -- Analytics --------------------------------------------------------
-        register_rest_route(self::NS, '/analytics/summary', [
-            ['methods' => 'GET', 'callback' => [$this, 'analytics_summary'],   'permission_callback' => [$this, 'can_manage']],
-        ]);
-        register_rest_route(self::NS, '/analytics/pageviews', [
-            ['methods' => 'GET', 'callback' => [$this, 'analytics_pageviews'], 'permission_callback' => [$this, 'can_manage']],
-        ]);
-        register_rest_route(self::NS, '/analytics/events', [
-            ['methods' => 'GET', 'callback' => [$this, 'analytics_events'],    'permission_callback' => [$this, 'can_manage']],
-        ]);
-        register_rest_route(self::NS, '/analytics/sources', [
-            ['methods' => 'GET', 'callback' => [$this, 'analytics_sources'],   'permission_callback' => [$this, 'can_manage']],
-        ]);
         register_rest_route(self::NS, '/api-keys/(?P<id>\d+)/revoke', [
-            ['methods' => 'POST', 'callback' => [$this, 'revoke_api_key'],  'permission_callback' => [$this, 'can_admin']],
+            ['methods' => 'POST', 'callback' => [$this, 'revoke_api_key'], 'permission_callback' => [$this, 'can_admin']],
         ]);
-        // ── Public lead capture (no auth) ────────────────────────────────────
+
+        // ── Public lead capture (no auth) ─────────────────────────────────────
         register_rest_route(self::NS, '/capture', [
             ['methods' => 'POST', 'callback' => [$this, 'public_capture'], 'permission_callback' => '__return_true'],
         ]);
@@ -145,9 +134,7 @@ class Ofnoacomps_CRM_REST_API {
     // ── Permission ────────────────────────────────────────────────────────────
 
     public function can_manage($req) {
-        // Accept logged-in WP user
         if (current_user_can('edit_posts')) return true;
-        // Accept valid API key
         $key = Ofnoacomps_CRM_API_Keys::get_key_from_request();
         return $key !== false;
     }
@@ -159,9 +146,9 @@ class Ofnoacomps_CRM_REST_API {
     // ── Lead handlers ─────────────────────────────────────────────────────────
 
     public function list_leads(WP_REST_Request $req): WP_REST_Response {
-        $args   = $this->pagination_args($req);
-        $leads  = Ofnoacomps_CRM_Lead::list($args);
-        $total  = Ofnoacomps_CRM_Lead::count($args);
+        $args  = $this->pagination_args($req);
+        $leads = Ofnoacomps_CRM_Lead::list($args);
+        $total = Ofnoacomps_CRM_Lead::count($args);
         return $this->paginated($leads, $total, $args);
     }
 
@@ -197,7 +184,7 @@ class Ofnoacomps_CRM_REST_API {
     }
 
     public function add_lead_activity(WP_REST_Request $req): WP_REST_Response {
-        $data     = $req->get_json_params() ?: $req->get_body_params();
+        $data = $req->get_json_params() ?: $req->get_body_params();
         $data['entity_type'] = 'lead';
         $data['entity_id']   = (int)$req['id'];
         $id = Ofnoacomps_CRM_Activity::create($data);
@@ -240,7 +227,8 @@ class Ofnoacomps_CRM_REST_API {
 
     public function add_customer_activity(WP_REST_Request $req): WP_REST_Response {
         $data = $req->get_json_params() ?: $req->get_body_params();
-        $data['entity_type'] = 'customer'; $data['entity_id'] = (int)$req['id'];
+        $data['entity_type'] = 'customer';
+        $data['entity_id']   = (int)$req['id'];
         return $this->success(Ofnoacomps_CRM_Activity::get(Ofnoacomps_CRM_Activity::create($data)), 201);
     }
 
@@ -308,7 +296,7 @@ class Ofnoacomps_CRM_REST_API {
         return Ofnoacomps_CRM_Activity::delete((int)$req['id']) ? $this->success(['deleted' => true]) : $this->error('Not found', 404);
     }
 
-    // ── Report handlers ────────────────────────────────────────────────────────
+    // ── Report handlers ───────────────────────────────────────────────────────
 
     public function report_summary(WP_REST_Request $req): WP_REST_Response {
         return $this->success(Ofnoacomps_CRM_Reports::dashboard_summary(
@@ -344,11 +332,54 @@ class Ofnoacomps_CRM_REST_API {
         ));
     }
 
-    // ── Public capture ─────────────────────────────────────────────────────────
+    // ── Analytics handlers ────────────────────────────────────────────────────
+
+    public function analytics_summary(WP_REST_Request $req): WP_REST_Response {
+        return $this->success(Ofnoacomps_CRM_Analytics::get_summary([
+            'days'      => (int)($req->get_param('days')      ?: 30),
+            'date_from' => $req->get_param('date_from')       ?: '',
+            'date_to'   => $req->get_param('date_to')         ?: '',
+        ]));
+    }
+
+    public function analytics_pageviews(WP_REST_Request $req): WP_REST_Response {
+        return $this->success(Ofnoacomps_CRM_Analytics::get_pageviews_over_time([
+            'days'      => (int)($req->get_param('days')      ?: 30),
+            'date_from' => $req->get_param('date_from')       ?: '',
+            'date_to'   => $req->get_param('date_to')         ?: '',
+            'group_by'  => $req->get_param('group_by')        ?: 'day',
+        ]));
+    }
+
+    public function analytics_events(WP_REST_Request $req): WP_REST_Response {
+        return $this->success(Ofnoacomps_CRM_Analytics::get_events_breakdown([
+            'days'       => (int)($req->get_param('days')     ?: 30),
+            'date_from'  => $req->get_param('date_from')      ?: '',
+            'date_to'    => $req->get_param('date_to')        ?: '',
+            'event_type' => $req->get_param('event_type')     ?: '',
+        ]));
+    }
+
+    public function analytics_sources(WP_REST_Request $req): WP_REST_Response {
+        return $this->success(Ofnoacomps_CRM_Analytics::get_traffic_sources([
+            'days'      => (int)($req->get_param('days')      ?: 30),
+            'date_from' => $req->get_param('date_from')       ?: '',
+            'date_to'   => $req->get_param('date_to')         ?: '',
+        ]));
+    }
+
+    public function analytics_ecommerce(WP_REST_Request $req): WP_REST_Response {
+        return $this->success(Ofnoacomps_CRM_Analytics::get_ecommerce_summary([
+            'days'      => (int)($req->get_param('days')      ?: 30),
+            'date_from' => $req->get_param('date_from')       ?: '',
+            'date_to'   => $req->get_param('date_to')         ?: '',
+        ]));
+    }
+
+    // ── Public capture ────────────────────────────────────────────────────────
 
     public function public_capture(WP_REST_Request $req): WP_REST_Response {
         $data = $req->get_json_params() ?: $req->get_body_params();
-        // Require at least a name or email or phone
         if (empty($data['email']) && empty($data['phone']) && empty($data['first_name'])) {
             return $this->error('חסרים פרטים', 400);
         }
@@ -368,7 +399,6 @@ class Ofnoacomps_CRM_REST_API {
         wp_send_json_success(['id' => $id]);
     }
 
-
     // ── API Key handlers ──────────────────────────────────────────────────────
 
     public function list_api_keys($req) {
@@ -376,9 +406,9 @@ class Ofnoacomps_CRM_REST_API {
     }
 
     public function create_api_key($req) {
-        $data = $req->get_json_params() ?: $req->get_body_params();
+        $data   = $req->get_json_params() ?: $req->get_body_params();
         $result = Ofnoacomps_CRM_API_Keys::generate(
-            $data['name'] ?? '',
+            $data['name']         ?? '',
             $data['capabilities'] ?? ['read'],
             get_current_user_id()
         );
@@ -395,7 +425,8 @@ class Ofnoacomps_CRM_REST_API {
         $ok = Ofnoacomps_CRM_API_Keys::delete((int)$req['id']);
         return $ok ? $this->success(['deleted' => true]) : $this->error('Not found', 404);
     }
-    // ── Response helpers ────────────────────────────────────────────────────────
+
+    // ── Response helpers ──────────────────────────────────────────────────────
 
     private function success($data, int $status = 200): WP_REST_Response {
         return new WP_REST_Response(['data' => $data], $status);
@@ -418,12 +449,12 @@ class Ofnoacomps_CRM_REST_API {
 
     private function pagination_args(WP_REST_Request $req): array {
         return [
-            'limit'    => (int) ($req->get_param('limit')    ?: 50),
-            'offset'   => (int) ($req->get_param('offset')   ?: 0),
+            'limit'    => (int)($req->get_param('limit')    ?: 50),
+            'offset'   => (int)($req->get_param('offset')   ?: 0),
             'search'   => $req->get_param('search')   ?: '',
             'status'   => $req->get_param('status')   ?: '',
             'source'   => $req->get_param('source')   ?: '',
-            'owner_id' => (int) ($req->get_param('owner_id') ?: 0),
+            'owner_id' => (int)($req->get_param('owner_id') ?: 0),
             'date_from'=> $req->get_param('date_from') ?: '',
             'date_to'  => $req->get_param('date_to')   ?: '',
         ];
@@ -437,4 +468,3 @@ class Ofnoacomps_CRM_REST_API {
         return $clean;
     }
 }
-

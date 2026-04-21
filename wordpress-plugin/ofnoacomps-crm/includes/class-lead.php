@@ -223,19 +223,77 @@ class Ofnoacomps_CRM_Lead {
         return !empty($admins) ? (int) $admins[0] : 0;
     }
 
+    /**
+     * שלח מייל התראה על ליד חדש.
+     * שולח תמיד ל: ofnoacomps@gmail.com + לאדמין האתר + לבעלים (אם שונה).
+     */
     private static function notify_owner(int $lead_id, array $row): void {
-        $owner_id = (int) $row['owner_id'];
-        if (!$owner_id) return;
-
-        $owner = get_user_by('id', $owner_id);
-        if (!$owner) return;
-
-        $name    = trim($row['first_name'] . ' ' . $row['last_name']);
-        $subject = "ליד חדש התקבל: $name";
+        $name    = trim($row['first_name'] . ' ' . $row['last_name']) ?: 'ליד חדש';
         $link    = admin_url("admin.php?page=ofnoacomps-crm-leads&action=view&id=$lead_id");
-        $message = "שלום {$owner->display_name},\n\nהתקבל ליד חדש מ-{$row['source']}.\n\nשם: $name\nאימייל: {$row['email']}\nטלפון: {$row['phone']}\n\nלצפייה בליד:\n$link";
+        $site    = get_bloginfo('name') ?: get_bloginfo('url');
+        $time    = wp_date('d/m/Y H:i', time());
 
-        wp_mail($owner->user_email, $subject, $message);
+        // נמענים: תמיד שלח ל-ofnoacomps@gmail.com + אדמין האתר + בעלים
+        $recipients = ['ofnoacomps@gmail.com'];
+
+        $site_admin = get_option('admin_email');
+        if ($site_admin && !in_array($site_admin, $recipients, true)) {
+            $recipients[] = $site_admin;
+        }
+
+        if (!empty($row['owner_id'])) {
+            $owner = get_user_by('id', (int) $row['owner_id']);
+            if ($owner && !in_array($owner->user_email, $recipients, true)) {
+                $recipients[] = $owner->user_email;
+            }
+        }
+
+        $subject = "ליד חדש מאתר $site: $name";
+
+        // HTML email
+        $rows_html = '';
+        $fields = [
+            'שם מלא'    => $name,
+            'אימייל'    => $row['email']   ?: '-',
+            'טלפון'     => $row['phone']   ?: '-',
+            'הודעה'     => $row['message'] ?: '-',
+            'מקור'      => $row['source']  ?: 'direct',
+            'דף נחיתה' => $row['landing_page'] ?: '-',
+            'ציון'      => $row['score'],
+            'נקלט בתאריך' => $time,
+        ];
+        foreach ($fields as $label => $value) {
+            $rows_html .= "<tr>
+                <td style='padding:10px 14px;border-bottom:1px solid #eee;background:#f9f9f9;font-weight:bold;color:#555;width:140px;'>$label</td>
+                <td style='padding:10px 14px;border-bottom:1px solid #eee;color:#333;'>$value</td>
+            </tr>";
+        }
+
+        $html = "<!DOCTYPE html><html dir='rtl' lang='he'>
+<head><meta charset='UTF-8'></head>
+<body style='font-family:Arial,sans-serif;background:#f0f0f0;margin:0;padding:20px;'>
+  <div style='max-width:600px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.1);'>
+    <div style='background:#2563eb;padding:20px 24px;'>
+      <h2 style='color:#fff;margin:0;font-size:20px;'>&#128640; ליד חדש התקבל!</h2>
+      <p style='color:#bfdbfe;margin:6px 0 0;font-size:13px;'>$site</p>
+    </div>
+    <table style='width:100%;border-collapse:collapse;'>$rows_html</table>
+    <div style='padding:20px 24px;'>
+      <a href='$link' style='display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold;'>
+        &#128065; צפה בליד במערכת
+      </a>
+    </div>
+    <div style='padding:12px 24px;background:#f9f9f9;border-top:1px solid #eee;font-size:11px;color:#888;'>
+      הודעה זו נשלחה אוטומטית על ידי מערכת Ofnoacomps CRM
+    </div>
+  </div>
+</body></html>";
+
+        $headers = ['Content-Type: text/html; charset=UTF-8'];
+
+        foreach ($recipients as $email) {
+            wp_mail($email, $subject, $html, $headers);
+        }
     }
 
     public static function get_statuses(): array {
@@ -250,16 +308,16 @@ class Ofnoacomps_CRM_Lead {
 
     public static function get_sources(): array {
         return [
-            'direct'         => 'ישיר',
-            'google_organic' => 'גוגל אורגני',
-            'google_ads'     => 'גוגל ממומן',
-            'facebook_ads'   => 'פייסבוק ממומן',
+            'direct'          => 'ישיר',
+            'google_organic'  => 'גוגל אורגני',
+            'google_ads'      => 'גוגל ממומן',
+            'facebook_ads'    => 'פייסבוק ממומן',
             'facebook_organic'=> 'פייסבוק אורגני',
-            'instagram'      => 'אינסטגרם',
-            'email'          => 'אימייל',
-            'referral'       => 'הפניה',
-            'whatsapp'       => 'וואטסאפ',
-            'other'          => 'אחר',
+            'instagram'       => 'אינסטגרם',
+            'email'           => 'אימייל',
+            'referral'        => 'הפניה',
+            'whatsapp'        => 'וואטסאפ',
+            'other'           => 'אחר',
         ];
     }
 }
