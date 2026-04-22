@@ -153,16 +153,49 @@ if ($Plugin -eq 'smart-cart-recovery') {
 
 Remove-Item $NewZipPath -Force -ErrorAction SilentlyContinue
 
+$PyExeZip = @('C:\\Users\\ofnoa\\AppData\\Local\\Programs\\Python\\Python313\\python.exe','python','python3','py') | ForEach-Object {
+    if (Test-Path $_ -ErrorAction SilentlyContinue) { $_ }
+    else {
+        $p = Get-Command $_ -ErrorAction SilentlyContinue
+        if ($p) { $p.Source }
+    }
+} | Where-Object { $_ } | Select-Object -First 1
+
 $7zExe = @("C:\Program Files\7-Zip\7z.exe","C:\Program Files (x86)\7-Zip\7z.exe") |
          Where-Object { Test-Path $_ } | Select-Object -First 1
 
-if ($7zExe) {
+if ($PyExeZip) {
+    # Python: guaranteed forward-slash POSIX paths — works on Linux servers
+    $PyZipScript = @"
+import os, zipfile, sys
+src   = sys.argv[1]
+dest  = sys.argv[2]
+slug  = sys.argv[3]
+skip  = {'.pyc','.pyo'}
+skip_dirs = {'__pycache__','.git','node_modules'}
+with zipfile.ZipFile(dest,'w',zipfile.ZIP_DEFLATED,allowZip64=True) as zf:
+    for root,dirs,files in os.walk(src):
+        dirs[:] = [d for d in dirs if d not in skip_dirs]
+        for fn in files:
+            if os.path.splitext(fn)[1] in skip: continue
+            fp  = os.path.join(root,fn)
+            arc = slug + '/' + os.path.relpath(fp,src).replace('\\\\','/')
+            zf.write(fp,arc)
+print('ZIP OK')
+"@
+    $PyZipScriptPath = Join-Path $RepoRoot "_zip_helper.py"
+    [System.IO.File]::WriteAllText($PyZipScriptPath, $PyZipScript, $Utf8NoBom)
+    & $PyExeZip $PyZipScriptPath $TempPluginDir $NewZipPath $Plugin
+    Remove-Item $PyZipScriptPath -Force -ErrorAction SilentlyContinue
+    Write-Host "   Used Python for ZIP (POSIX forward slashes)" -ForegroundColor Gray
+} elseif ($7zExe) {
     Start-Process -FilePath $7zExe `
         -ArgumentList "a", "-tzip", "`"$NewZipPath`"", "`"$Plugin\`"" `
         -WorkingDirectory $TempDir `
         -Wait -NoNewWindow
+    Write-Host "   Used 7-Zip for ZIP" -ForegroundColor Gray
 } else {
-    # .NET fallback with forward slashes
+    # .NET fallback with explicit forward-slash replacement
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     $zipStream = [System.IO.File]::Open($NewZipPath, [System.IO.FileMode]::Create)
     $archive   = [System.IO.Compression.ZipArchive]::new($zipStream, [System.IO.Compression.ZipArchiveMode]::Create)
@@ -174,7 +207,7 @@ if ($7zExe) {
         $src.CopyTo($dst); $src.Dispose(); $dst.Dispose()
     }
     $archive.Dispose(); $zipStream.Dispose()
-    Write-Warning "7-Zip not found - used .NET fallback (forward slashes preserved)."
+    Write-Warning "Used .NET fallback for ZIP (forward slashes preserved)."
 }
 
 $ZipSizeKB = [math]::Round((Get-Item $NewZipPath).Length / 1KB, 1)
