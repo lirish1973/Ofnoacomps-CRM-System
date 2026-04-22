@@ -1,17 +1,17 @@
 {
-    "ofnoacomps-crm":  {
-                           "name":  "Ofnoacomps CRM",
-                           "slug":  "ofnoacomps-crm",
-                           "version":  "1.4.1",
-                           "tested":  "6.7",
-                           "requires":  "5.8",
-                           "requires_php":  "7.4",
-                           "last_updated":  "2026-04-21",
-                           "homepage":  "https://github.com/lirish1973/Ofnoacomps-CRM-System",
-                           "download_url":  "https://github.com/lirish1973/Ofnoacomps-CRM-System/raw/main/wordpress-plugin/ofnoacomps-crm.zip",
-                           "description":  "×ž×¢×¨×›×ª CRM ×ž×ª×§×“×ž×ª ×œ×ž×¢×§×‘ ××—×¨ ×ž×‘×§×¨×™×, ×œ×™×“×™×, ×•×× ×œ×™×˜×™×§×¡ ×‘×–×ž×Ÿ ××ž×ª ×¢×‘×•×¨ ××ª×¨×™ WordPress. ×›×•×œ×œ ×ž×¢×§×‘ WooCommerce ×ž×œ× ×•×“×©×‘×•×¨×“ ×ž×§×¦×•×¢×™.",
-                           "author":  "Ofnoacomps",
-                           "author_homepage":  "https://github.com/lirish1973",
-                           "changelog":  "\u003ch4\u003e1.4.0 - 2026-04-21\u003c/h4\u003e\u003cul\u003e\u003cli\u003e×ž×¢×§×‘ WooCommerce ×ž×œ×: ×”×•×¡×¤×ª ×ž×•×¦×¨ ×œ×¢×’×œ×”, × ×˜×™×©×ª ×¢×’×œ×”, ×”×ª×—×œ×ª ×ª×©×œ×•×, ×”×©×œ×ž×ª ×”×–×ž× ×”\u003c/li\u003e\u003cli\u003e×¢×™×¦×•×‘ ×ž×—×“×© ×ž×œ× ×©×œ ×”-Dashboard ×œ×¨×ž×” ××¨×’×•× ×™×ª ×ž×§×¦×•×¢×™×ª\u003c/li\u003e\u003cli\u003e×¨×¢× ×•×Ÿ ××•×˜×•×ž×˜×™ ×›×œ 30 ×©× ×™×•×ª ×¢× ×˜×™×™×ž×¨ ×—×™\u003c/li\u003e\u003cli\u003e×¤×× ×œ ×ž×©×¤×š ×¢×’×œ×ª ×§× ×™×•×ª ×¢× × ×™×ª×•×— ×©×™×¢×•×¨×™ ×”×ž×¨×”\u003c/li\u003e\u003cli\u003e×ª×ž×™×›×” ×‘-navigator.sendBeacon ×œ××ž×™× ×•×ª ×’×‘×•×”×” ×‘×–×™×”×•×™ × ×˜×™×©×”\u003c/li\u003e\u003c/ul\u003e\u003ch4\u003e1.3.4 - 2026-04-16\u003c/h4\u003e\u003cul\u003e\u003cli\u003e×©×™×¤×•×¨×™ ×‘×™×¦×•×¢×™× ×•×ª×™×§×•× ×™ ×‘××’×™×\u003c/li\u003e\u003cli\u003e×¢×“×›×•×Ÿ ×ž× ×’× ×•×Ÿ ×‘×“×™×§×ª ×’×¨×¡××•×ª ××•×˜×•×ž×˜×™\u003c/li\u003e\u003c/ul\u003e"
-                       }
+  "ofnoacomps-crm": {
+    "name": "Ofnoacomps CRM",
+    "slug": "ofnoacomps-crm",
+    "version": "1.4.2",
+    "tested": "6.7",
+    "requires": "5.8",
+    "requires_php": "7.4",
+    "last_updated": "2026-04-22",
+    "homepage": "https://github.com/lirish1973/Ofnoacomps-CRM-System",
+    "download_url": "https://github.com/lirish1973/Ofnoacomps-CRM-System/raw/main/wordpress-plugin/ofnoacomps-crm.zip",
+    "description": "×ž×¢×¨×›×ª CRM ×ž×ª×§×“×ž×ª ×œ×ž×¢×§×‘ ××—×¨ ×ž×‘×§×¨×™×, ×œ×™×“×™×, ×•×× ×œ×™×˜×™×§×¡ ×‘×–×ž×Ÿ ××ž×ª ×¢×‘×•×¨ ××ª×¨×™ WordPress. ×›×•×œ×œ ×ž×¢×§×‘ WooCommerce ×ž×œ× ×•×“×©×‘×•×¨×“ ×ž×§×¦×•×¢×™.",
+    "author": "Ofnoacomps",
+    "author_homepage": "https://github.com/lirish1973",
+    "changelog": "<h4>1.4.2 - 2026-04-22</h4><ul><li>תיקון קריטי: לכידת email, phone, message מטפסי Elementor Pro, CF7, WPForms ו-GravityForms</li><li>Elementor: זיהוי שדות לפי type (email/tel/textarea) — עובד עם שדות בעברית ובאנגלית</li><li>CF7: זיהוי אוטומטי של שדות טלפון ואימייל ללא תלות בשמות השדות</li><li>WPForms ו-GravityForms: הוספת לכידת הודעה (textarea)</li><li>Gravity Forms: תמיכה בשדה Name מורכב (first + last)</li></ul><h4>1.4.0 - 2026-04-21</h4><ul><li>×ž×¢×§×‘ WooCommerce ×ž×œ×: ×”×•×¡×¤×ª ×ž×•×¦×¨ ×œ×¢×’×œ×”, × ×˜×™×©×ª ×¢×’×œ×”, ×”×ª×—×œ×ª ×ª×©×œ×•×, ×”×©×œ×ž×ª ×”×–×ž× ×”</li><li>×¢×™×¦×•×‘ ×ž×—×“×© ×ž×œ× ×©×œ ×”-Dashboard ×œ×¨×ž×” ××¨×’×•× ×™×ª ×ž×§×¦×•×¢×™×ª</li><li>×¨×¢× ×•×Ÿ ××•×˜×•×ž×˜×™ ×›×œ 30 ×©× ×™×•×ª ×¢× ×˜×™×™×ž×¨ ×—×™</li><li>×¤×× ×œ ×ž×©×¤×š ×¢×’×œ×ª ×§× ×™×•×ª ×¢× × ×™×ª×•×— ×©×™×¢×•×¨×™ ×”×ž×¨×”</li><li>×ª×ž×™×›×” ×‘-navigator.sendBeacon ×œ××ž×™× ×•×ª ×’×‘×•×”×” ×‘×–×™×”×•×™ × ×˜×™×©×”</li></ul><h4>1.3.4 - 2026-04-16</h4><ul><li>×©×™×¤×•×¨×™ ×‘×™×¦×•×¢×™× ×•×ª×™×§×•× ×™ ×‘××’×™×</li><li>×¢×“×›×•×Ÿ ×ž× ×’× ×•×Ÿ ×‘×“×™×§×ª ×’×¨×¡××•×ª ××•×˜×•×ž×˜×™</li></ul>"
+  }
 }

@@ -3,7 +3,7 @@
  * Plugin Name: Ofnoacomps CRM
  * Plugin URI:  https://www.ofnoacomps.co.il
  * Description: מערכת CRM מלאה לניהול לידים, לקוחות, עסקאות ודוחות עם מעקב מקור תנועה.
- * Version:     1.4.1
+ * Version:     1.4.2
  * Author:      Ofnoacomps
  * Text Domain: ofnoacomps-crm
  * Domain Path: /languages
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('OFNOACOMPS_CRM_VERSION', '1.4.1');
+define('OFNOACOMPS_CRM_VERSION', '1.4.2');
 define('OFNOACOMPS_CRM_PLUGIN_DIR',  plugin_dir_path(__FILE__));
 define('OFNOACOMPS_CRM_PLUGIN_URL',  plugin_dir_url(__FILE__));
 define('OFNOACOMPS_CRM_PLUGIN_FILE', __FILE__);
@@ -101,7 +101,7 @@ function ofnoacomps_crm_enqueue_tracker() {
     ]);
 }
 
-// ── Lead capture helpers ──────────────────────────────────────────────────────
+// ── Shared helpers ────────────────────────────────────────────────────────────
 
 function ofnoacomps_crm_get_tracker(): array {
     return isset($_COOKIE['ofnoacomps_crm_tracker'])
@@ -118,25 +118,14 @@ function ofnoacomps_crm_get_ip(): string {
     return '';
 }
 
-// ── Contact Form 7 ────────────────────────────────────────────────────────────
-
-function ofnoacomps_crm_capture_cf7_lead($contact_form) {
-    $submission = WPCF7_Submission::get_instance();
-    if (!$submission) return;
-
-    $posted  = $submission->get_posted_data();
-    $tracker = ofnoacomps_crm_get_tracker();
-    $parts   = explode(' ', sanitize_text_field($posted['your-name'] ?? ''), 2);
-
-    Ofnoacomps_CRM_Lead::create([
-        'first_name'   => $parts[0] ?? '',
-        'last_name'    => $parts[1] ?? '',
-        'email'        => sanitize_email($posted['your-email'] ?? ''),
-        'phone'        => sanitize_text_field($posted['your-phone'] ?? $posted['tel-788'] ?? ''),
-        'message'      => sanitize_textarea_field($posted['your-message'] ?? ''),
-        'form_id'      => $contact_form->id(),
-        'form_name'    => $contact_form->title(),
-        'page_url'     => sanitize_url($tracker['page_url'] ?? wp_get_referer()),
+/**
+ * Build the tracker-cookie portion of a lead row.
+ */
+function ofnoacomps_crm_tracker_data(array $tracker = []): array {
+    if (empty($tracker)) {
+        $tracker = ofnoacomps_crm_get_tracker();
+    }
+    return [
         'source'       => sanitize_text_field($tracker['source']       ?? 'direct'),
         'medium'       => sanitize_text_field($tracker['medium']       ?? ''),
         'campaign'     => sanitize_text_field($tracker['campaign']     ?? ''),
@@ -146,117 +135,349 @@ function ofnoacomps_crm_capture_cf7_lead($contact_form) {
         'landing_page' => sanitize_url($tracker['landing_page']        ?? ''),
         'device_type'  => sanitize_text_field($tracker['device_type']  ?? ''),
         'ip_address'   => ofnoacomps_crm_get_ip(),
-    ]);
+    ];
+}
+
+/**
+ * Split a full name string into [first_name, last_name].
+ */
+function ofnoacomps_crm_split_name(string $name): array {
+    $parts = explode(' ', sanitize_text_field(trim($name)), 2);
+    return [
+        'first_name' => $parts[0] ?? '',
+        'last_name'  => $parts[1] ?? '',
+    ];
+}
+
+// ── Contact Form 7 ────────────────────────────────────────────────────────────
+// Uses type-based detection + common field-name fallbacks.
+// Works with any CF7 form regardless of field naming.
+
+function ofnoacomps_crm_capture_cf7_lead($contact_form) {
+    $submission = WPCF7_Submission::get_instance();
+    if (!$submission) return;
+
+    $posted  = $submission->get_posted_data();
+    $tracker = ofnoacomps_crm_get_tracker();
+
+    // ── Name ─────────────────────────────────────────────────────────────────
+    // Try combined name field first, then separate first/last
+    $first_name = '';
+    $last_name  = '';
+    $combined   = $posted['your-name'] ?? $posted['name'] ?? $posted['full-name'] ?? $posted['full_name'] ?? '';
+    if ($combined) {
+        $name_parts = ofnoacomps_crm_split_name($combined);
+        $first_name = $name_parts['first_name'];
+        $last_name  = $name_parts['last_name'];
+    } else {
+        $first_name = sanitize_text_field($posted['first-name'] ?? $posted['first_name'] ?? $posted['fname'] ?? '');
+        $last_name  = sanitize_text_field($posted['last-name']  ?? $posted['last_name']  ?? $posted['lname'] ?? '');
+    }
+
+    // ── Email ─────────────────────────────────────────────────────────────────
+    // Try common field names, then auto-detect any field that is a valid email
+    $email = '';
+    foreach (['your-email', 'email', 'mail', 'e-mail', 'email-address'] as $key) {
+        if (!empty($posted[$key]) && is_email($posted[$key])) {
+            $email = sanitize_email($posted[$key]);
+            break;
+        }
+    }
+    if (empty($email)) {
+        foreach ($posted as $val) {
+            if (is_string($val) && is_email($val)) {
+                $email = sanitize_email($val);
+                break;
+            }
+        }
+    }
+
+    // ── Phone ─────────────────────────────────────────────────────────────────
+    // Try common field names, then auto-detect any field that looks like a phone
+    $phone = '';
+    $phone_keys = ['your-phone', 'phone', 'tel', 'mobile', 'phone-number', 'telephone',
+                   'cell', 'cellphone', 'tel-788', 'phone-791', 'mobile-number'];
+    foreach ($phone_keys as $key) {
+        if (!empty($posted[$key])) {
+            $phone = sanitize_text_field($posted[$key]);
+            break;
+        }
+    }
+    if (empty($phone)) {
+        foreach ($posted as $val) {
+            if (is_string($val) && preg_match('/^[\d\+\-\(\)\s]{7,20}$/', trim($val))) {
+                $phone = sanitize_text_field(trim($val));
+                break;
+            }
+        }
+    }
+
+    // ── Message ───────────────────────────────────────────────────────────────
+    $message = sanitize_textarea_field(
+        $posted['your-message'] ?? $posted['message'] ?? $posted['msg'] ??
+        $posted['textarea-your-message'] ?? $posted['text-your-message'] ?? ''
+    );
+
+    Ofnoacomps_CRM_Lead::create(array_merge(ofnoacomps_crm_tracker_data($tracker), [
+        'first_name'   => $first_name,
+        'last_name'    => $last_name,
+        'email'        => $email,
+        'phone'        => $phone,
+        'message'      => $message,
+        'form_id'      => $contact_form->id(),
+        'form_name'    => $contact_form->title(),
+        'page_url'     => sanitize_url($tracker['page_url'] ?? wp_get_referer()),
+    ]));
 }
 
 // ── WPForms ───────────────────────────────────────────────────────────────────
+// Matches by field type (email, phone, name, textarea/text-multiline).
+// Falls back to text fields for name when no dedicated name field exists.
 
 function ofnoacomps_crm_capture_wpforms_lead($fields, $entry, $form_data, $entry_id) {
-    $tracker = ofnoacomps_crm_get_tracker();
-    $email = $phone = $name = '';
-    foreach ($fields as $field) {
-        if ($field['type'] === 'email') $email = $field['value'];
-        if ($field['type'] === 'phone') $phone = $field['value'];
-        if ($field['type'] === 'name')  $name  = $field['value_raw'] ?? $field['value'];
-    }
-    $parts = explode(' ', sanitize_text_field($name), 2);
+    $tracker    = ofnoacomps_crm_get_tracker();
+    $first_name = '';
+    $last_name  = '';
+    $email      = '';
+    $phone      = '';
+    $message    = '';
 
-    Ofnoacomps_CRM_Lead::create([
-        'first_name'   => $parts[0] ?? '',
-        'last_name'    => $parts[1] ?? '',
-        'email'        => sanitize_email($email),
-        'phone'        => sanitize_text_field($phone),
-        'form_id'      => $form_data['id'],
-        'form_name'    => $form_data['settings']['form_title'] ?? '',
-        'source'       => sanitize_text_field($tracker['source']      ?? 'direct'),
-        'medium'       => sanitize_text_field($tracker['medium']      ?? ''),
-        'campaign'     => sanitize_text_field($tracker['campaign']    ?? ''),
-        'utm_term'     => sanitize_text_field($tracker['utm_term']    ?? ''),
-        'utm_content'  => sanitize_text_field($tracker['utm_content'] ?? ''),
-        'referrer'     => sanitize_url($tracker['referrer']           ?? ''),
-        'landing_page' => sanitize_url($tracker['landing_page']       ?? ''),
-        'ip_address'   => ofnoacomps_crm_get_ip(),
-    ]);
+    foreach ($fields as $field) {
+        $type  = strtolower($field['type'] ?? '');
+        $value = $field['value'] ?? '';
+
+        switch ($type) {
+            case 'email':
+                if (empty($email)) $email = sanitize_email($value);
+                break;
+
+            case 'phone':
+                if (empty($phone)) $phone = sanitize_text_field($value);
+                break;
+
+            case 'name':
+                // WPForms Name field can be simple (value) or compound (value_raw sub-fields)
+                if (!empty($field['first'])) {
+                    $first_name = sanitize_text_field($field['first']);
+                    $last_name  = sanitize_text_field($field['last'] ?? '');
+                } else {
+                    $parts = ofnoacomps_crm_split_name($field['value_raw'] ?? $value);
+                    $first_name = $parts['first_name'];
+                    $last_name  = $parts['last_name'];
+                }
+                break;
+
+            case 'textarea':
+            case 'paragraph-text':
+                if (empty($message)) $message = sanitize_textarea_field($value);
+                break;
+
+            case 'text':
+                // Use first text field as name if no name field found yet
+                if (empty($first_name)) {
+                    $parts = ofnoacomps_crm_split_name($value);
+                    $first_name = $parts['first_name'];
+                    $last_name  = $parts['last_name'];
+                }
+                break;
+        }
+    }
+
+    Ofnoacomps_CRM_Lead::create(array_merge(ofnoacomps_crm_tracker_data($tracker), [
+        'first_name' => $first_name,
+        'last_name'  => $last_name,
+        'email'      => $email,
+        'phone'      => $phone,
+        'message'    => $message,
+        'form_id'    => $form_data['id'] ?? '',
+        'form_name'  => $form_data['settings']['form_title'] ?? '',
+    ]));
 }
 
 // ── Elementor Pro Forms ───────────────────────────────────────────────────────
+// PRIMARY: match by field type (email, tel, name, textarea).
+// FALLBACK: match by field ID or sanitized title (handles Hebrew via mb_strtolower).
+// This fixes the bug where sanitize_title() returned '' for Hebrew field titles.
 
 function ofnoacomps_crm_capture_elementor_lead($record, $ajax_handler) {
     $tracker    = ofnoacomps_crm_get_tracker();
     $raw_fields = $record->get('fields');
 
-    // Flatten fields to key => value
-    $f = [];
-    foreach ($raw_fields as $id => $field) {
-        $f[$id]               = $field['value'];
-        // Also index by common label slugs
-        $slug = sanitize_title($field['title'] ?? $id);
-        $f[$slug] = $field['value'];
+    $first_name = '';
+    $last_name  = '';
+    $email      = '';
+    $phone      = '';
+    $message    = '';
+
+    // Known English & Hebrew aliases for each intent
+    $name_ids    = ['name', 'full-name', 'full_name', 'your-name', 'fullname',
+                    'first-name', 'first_name', 'fname', 'שם', 'שם פרטי', 'שם מלא'];
+    $email_ids   = ['email', 'your-email', 'mail', 'e-mail', 'email-address',
+                    'אימייל', 'מייל', 'דואר אלקטרוני'];
+    $phone_ids   = ['phone', 'tel', 'telephone', 'mobile', 'your-phone', 'phone-number',
+                    'cellphone', 'cell', 'טלפון', 'נייד', 'מספר טלפון', 'טל'];
+    $message_ids = ['message', 'msg', 'your-message', 'text', 'content', 'body',
+                    'הודעה', 'תוכן', 'פרטים', 'הערות'];
+
+    foreach ($raw_fields as $field_id => $field) {
+        $type    = strtolower($field['field_type'] ?? $field['type'] ?? '');
+        $value   = $field['value'] ?? '';
+        $raw_val = $field['raw_value'] ?? $value;
+        $title   = strtolower($field['title'] ?? '');
+        $id_low  = strtolower($field_id);
+
+        // ── Match by Elementor field type (most reliable) ─────────────────
+        if ($type === 'email' && empty($email)) {
+            $email = sanitize_email($value);
+            continue;
+        }
+        if ($type === 'tel' && empty($phone)) {
+            $phone = sanitize_text_field($value);
+            continue;
+        }
+        if ($type === 'textarea' && empty($message)) {
+            $message = sanitize_textarea_field($value);
+            continue;
+        }
+        if ($type === 'name' && empty($first_name)) {
+            // Elementor "Name" field may have sub-fields
+            if (!empty($field['sub_fields'])) {
+                $first_name = sanitize_text_field($field['sub_fields']['first'] ?? $value);
+                $last_name  = sanitize_text_field($field['sub_fields']['last']  ?? '');
+            } else {
+                $parts = ofnoacomps_crm_split_name($raw_val ?: $value);
+                $first_name = $parts['first_name'];
+                $last_name  = $parts['last_name'];
+            }
+            continue;
+        }
+
+        // ── Match by field ID or title (Hebrew-safe) ──────────────────────
+        // Compare against lower-cased title and ID so Hebrew titles work
+        $match_keys = array_unique([$id_low, $title]);
+
+        foreach ($match_keys as $mk) {
+            if (empty($mk)) continue;
+
+            if (empty($email) && in_array($mk, $email_ids, true) && is_email($value)) {
+                $email = sanitize_email($value);
+                break;
+            }
+            if (empty($phone) && in_array($mk, $phone_ids, true) && !empty($value)) {
+                $phone = sanitize_text_field($value);
+                break;
+            }
+            if (empty($message) && in_array($mk, $message_ids, true) && !empty($value)) {
+                $message = sanitize_textarea_field($value);
+                break;
+            }
+            if (empty($first_name) && in_array($mk, $name_ids, true) && !empty($value)) {
+                $parts = ofnoacomps_crm_split_name($value);
+                $first_name = $parts['first_name'];
+                $last_name  = $parts['last_name'];
+                break;
+            }
+        }
+
+        // ── Auto-detect by value pattern as last resort ───────────────────
+        if (empty($email) && is_email($value)) {
+            $email = sanitize_email($value);
+        } elseif (empty($phone) && preg_match('/^[\d\+\-\(\)\s]{7,20}$/', trim($value))) {
+            $phone = sanitize_text_field(trim($value));
+        }
     }
 
-    // Extract common field names (supports Hebrew & English field IDs)
-    $name    = $f['name']      ?? $f['your-name']  ?? $f['full-name'] ?? $f['full_name'] ?? $f['שם'] ?? '';
-    $email   = $f['email']     ?? $f['your-email'] ?? $f['mail']      ?? $f['אימייל']    ?? '';
-    $phone   = $f['phone']     ?? $f['tel']        ?? $f['your-phone']?? $f['mobile']    ?? $f['טלפון'] ?? '';
-    $message = $f['message']   ?? $f['your-message']?? $f['msg']      ?? $f['הודעה']    ?? '';
-
-    // If a "name" field wasn't found, try first_name + last_name fields
-    if (empty($name)) {
-        $name = trim(($f['first_name'] ?? $f['first-name'] ?? '') . ' ' . ($f['last_name'] ?? $f['last-name'] ?? ''));
+    // If still no name, try separate first_name / last_name fields explicitly
+    if (empty($first_name)) {
+        foreach ($raw_fields as $field_id => $field) {
+            $id_low = strtolower($field_id);
+            $title  = strtolower($field['title'] ?? '');
+            if (in_array($id_low, ['first-name','first_name','fname','שם פרטי'], true) ||
+                in_array($title,  ['first-name','first_name','fname','שם פרטי'], true)) {
+                $first_name = sanitize_text_field($field['value'] ?? '');
+            }
+            if (in_array($id_low, ['last-name','last_name','lname','שם משפחה'], true) ||
+                in_array($title,  ['last-name','last_name','lname','שם משפחה'], true)) {
+                $last_name = sanitize_text_field($field['value'] ?? '');
+            }
+        }
     }
-
-    $parts = explode(' ', sanitize_text_field($name), 2);
 
     $form_settings = $record->get('form_settings');
 
-    Ofnoacomps_CRM_Lead::create([
-        'first_name'   => $parts[0] ?? '',
-        'last_name'    => $parts[1] ?? '',
-        'email'        => sanitize_email($email),
-        'phone'        => sanitize_text_field($phone),
-        'message'      => sanitize_textarea_field($message),
-        'form_id'      => $form_settings['id']        ?? '',
-        'form_name'    => $form_settings['form_name'] ?? 'Elementor Form',
-        'source'       => sanitize_text_field($tracker['source']      ?? 'direct'),
-        'medium'       => sanitize_text_field($tracker['medium']      ?? ''),
-        'campaign'     => sanitize_text_field($tracker['campaign']    ?? ''),
-        'utm_term'     => sanitize_text_field($tracker['utm_term']    ?? ''),
-        'utm_content'  => sanitize_text_field($tracker['utm_content'] ?? ''),
-        'referrer'     => sanitize_url($tracker['referrer']           ?? ''),
-        'landing_page' => sanitize_url($tracker['landing_page']       ?? ''),
-        'device_type'  => sanitize_text_field($tracker['device_type'] ?? ''),
-        'ip_address'   => ofnoacomps_crm_get_ip(),
-    ]);
+    Ofnoacomps_CRM_Lead::create(array_merge(ofnoacomps_crm_tracker_data($tracker), [
+        'first_name' => $first_name,
+        'last_name'  => $last_name,
+        'email'      => $email,
+        'phone'      => $phone,
+        'message'    => $message,
+        'form_id'    => $form_settings['id']        ?? '',
+        'form_name'  => $form_settings['form_name'] ?? 'Elementor Form',
+    ]));
 }
 
 // ── Gravity Forms ─────────────────────────────────────────────────────────────
+// Matches by field type. Also captures textarea/text for message.
 
 function ofnoacomps_crm_capture_gravity_lead($entry, $form) {
-    $tracker = ofnoacomps_crm_get_tracker();
-    $email = $phone = $name = '';
+    $tracker    = ofnoacomps_crm_get_tracker();
+    $first_name = '';
+    $last_name  = '';
+    $email      = '';
+    $phone      = '';
+    $message    = '';
 
     foreach ($form['fields'] as $field) {
-        $val = rgar($entry, (string)$field->id);
-        if ($field->type === 'email')  $email = $val;
-        if ($field->type === 'phone')  $phone = $val;
-        if ($field->type === 'name')   $name  = $val;
-        if ($field->type === 'text' && empty($name)) $name = $val;
+        $val  = rgar($entry, (string)$field->id);
+        $type = strtolower($field->type ?? '');
+
+        switch ($type) {
+            case 'email':
+                if (empty($email)) $email = sanitize_email($val);
+                break;
+
+            case 'phone':
+                if (empty($phone)) $phone = sanitize_text_field($val);
+                break;
+
+            case 'name':
+                // Gravity Forms Name field can be single or compound
+                $fn = rgar($entry, $field->id . '.3');  // First
+                $ln = rgar($entry, $field->id . '.6');  // Last
+                if (!empty($fn) || !empty($ln)) {
+                    $first_name = sanitize_text_field($fn);
+                    $last_name  = sanitize_text_field($ln);
+                } elseif (!empty($val) && empty($first_name)) {
+                    $parts = ofnoacomps_crm_split_name($val);
+                    $first_name = $parts['first_name'];
+                    $last_name  = $parts['last_name'];
+                }
+                break;
+
+            case 'textarea':
+                if (empty($message)) $message = sanitize_textarea_field($val);
+                break;
+
+            case 'text':
+                // Use first text field as name only if no name field found
+                if (empty($first_name) && !empty($val)) {
+                    $parts = ofnoacomps_crm_split_name($val);
+                    $first_name = $parts['first_name'];
+                    $last_name  = $parts['last_name'];
+                }
+                break;
+        }
     }
 
-    $parts = explode(' ', sanitize_text_field($name), 2);
-
-    Ofnoacomps_CRM_Lead::create([
-        'first_name'   => $parts[0] ?? '',
-        'last_name'    => $parts[1] ?? '',
-        'email'        => sanitize_email($email),
-        'phone'        => sanitize_text_field($phone),
-        'form_id'      => $form['id'],
-        'form_name'    => $form['title'] ?? 'Gravity Form',
-        'source'       => sanitize_text_field($tracker['source']      ?? 'direct'),
-        'medium'       => sanitize_text_field($tracker['medium']      ?? ''),
-        'campaign'     => sanitize_text_field($tracker['campaign']    ?? ''),
-        'ip_address'   => ofnoacomps_crm_get_ip(),
-    ]);
+    Ofnoacomps_CRM_Lead::create(array_merge(ofnoacomps_crm_tracker_data($tracker), [
+        'first_name' => $first_name,
+        'last_name'  => $last_name,
+        'email'      => $email,
+        'phone'      => $phone,
+        'message'    => $message,
+        'form_id'    => $form['id']    ?? '',
+        'form_name'  => $form['title'] ?? 'Gravity Form',
+    ]));
 }
 
 // ── Analytics AJAX ────────────────────────────────────────────────────────────
