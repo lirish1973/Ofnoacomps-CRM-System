@@ -3,7 +3,7 @@
  * Plugin Name:       HOCO Israel — GEO-SEO Optimizer
  * Plugin URI:        https://github.com/lirish1973/Ofnoacomps-CRM-System
  * Description:       מוסיף Organization Schema, Product Schema, תיקון Canonical, Security Headers ו-llms.txt לשיפור נראות ב-AI Search (ChatGPT, Perplexity, Google AIO).
- * Version:     1.0.4
+ * Version:     1.0.5
  * Author:            Ofnoacomps
  * Author URI:        https://github.com/lirish1973
  * License:           MIT
@@ -14,7 +14,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'HOCO_GEO_SEO_VERSION',     '1.0.4' );
+define( 'HOCO_GEO_SEO_VERSION',     '1.0.5' );
 define( 'HOCO_GEO_SEO_PLUGIN_DIR',  plugin_dir_path( __FILE__ ) );
 define( 'HOCO_GEO_SEO_PLUGIN_URL',  plugin_dir_url( __FILE__ ) );
 define( 'HOCO_GEO_SEO_PLUGIN_FILE', __FILE__ );
@@ -246,11 +246,18 @@ function hoco_geo_homepage_products_schema() {
 }
 
 /* ════════════════════════════════════════════════════════════
- * 5. CANONICAL — www בלבד
+ * 5. CANONICAL — מניעת כפילות (Yoast / Rank Math / WordPress)
  * ══════════════════════════════════════════════════════════ */
 add_action( 'wp_head', 'hoco_geo_fix_canonical', 0 );
 function hoco_geo_fix_canonical() {
+    // הסר WordPress default canonical
     remove_action( 'wp_head', 'rel_canonical' );
+
+    // הסר Yoast SEO canonical כדי למנוע כפילות
+    add_filter( 'wpseo_canonical', '__return_false' );
+
+    // הסר Rank Math canonical כדי למנוע כפילות
+    add_filter( 'rank_math/frontend/canonical', '__return_false' );
 
     $canonical = '';
     if ( is_front_page() ) {
@@ -270,7 +277,7 @@ function hoco_geo_fix_canonical() {
     }
 
     if ( $canonical ) {
-        echo "\n<!-- GEO-SEO: Canonical (www-enforced) -->\n";
+        echo "\n<!-- GEO-SEO: Canonical (www-enforced, single) -->\n";
         echo '<link rel="canonical" href="' . esc_url( $canonical ) . '" />' . "\n";
     }
 }
@@ -384,7 +391,67 @@ function hoco_geo_build_llmstxt() {
 }
 
 /* ════════════════════════════════════════════════════════════
- * 9. ACTIVATION / DEACTIVATION
+ * 9. LOCAL BUSINESS SCHEMA — עמוד הבית
+ * ══════════════════════════════════════════════════════════ */
+add_action( 'wp_head', 'hoco_geo_local_business_schema', 5 );
+function hoco_geo_local_business_schema() {
+    if ( ! is_front_page() ) {
+        return;
+    }
+    $schema = [
+        '@context' => 'https://schema.org',
+        '@type'    => 'LocalBusiness',
+        '@id'      => 'https://www.hoco-israel.co.il/#localbusiness',
+        'name'     => 'HOCO Israel',
+        'alternateName' => 'הוקו ישראל',
+        'description'   => 'יבואן רשמי של מוצרי HOCO בישראל — מטענים, רמקולים, אוזניות, שעוני ילדים ואביזרי סלולר.',
+        'url'      => 'https://www.hoco-israel.co.il/',
+        'email'    => 'info@hoco-israel.co.il',
+        'logo'     => 'https://www.hoco-israel.co.il/wp-content/uploads/hoco-logo.png',
+        'image'    => 'https://www.hoco-israel.co.il/wp-content/uploads/hoco-logo.png',
+        'address'  => [
+            '@type'          => 'PostalAddress',
+            'addressCountry' => 'IL',
+            'addressLocality' => 'ישראל',
+        ],
+        'sameAs' => [
+            'https://www.hoco.com',
+            'https://www.facebook.com/hocoil',
+            'https://www.instagram.com/hoco_israel',
+        ],
+        'priceRange'  => '₪₪',
+        'currenciesAccepted' => 'ILS',
+        'paymentAccepted'    => 'Credit Card, Cash',
+        'areaServed'  => [
+            '@type' => 'Country',
+            'name'  => 'Israel',
+        ],
+        'hasOfferCatalog' => [
+            '@type' => 'OfferCatalog',
+            'name'  => 'מוצרי HOCO Israel',
+            'url'   => 'https://www.hoco-israel.co.il/shop/',
+        ],
+    ];
+    echo "\n<!-- GEO-SEO: LocalBusiness Schema -->\n";
+    echo '<script type="application/ld+json">' . "\n";
+    echo wp_json_encode( $schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT );
+    echo "\n</script>\n";
+}
+
+/* ════════════════════════════════════════════════════════════
+ * 10. ALT ATTRIBUTES — תמונות ללא alt
+ * ══════════════════════════════════════════════════════════ */
+add_filter( 'wp_get_attachment_image_attributes', 'hoco_geo_fix_image_alt', 10, 2 );
+function hoco_geo_fix_image_alt( $attr, $attachment ) {
+    if ( empty( $attr['alt'] ) ) {
+        $title = get_the_title( $attachment->ID );
+        $attr['alt'] = $title ? $title . ' — HOCO Israel' : 'מוצר HOCO Israel';
+    }
+    return $attr;
+}
+
+/* ════════════════════════════════════════════════════════════
+ * 11. ACTIVATION / DEACTIVATION
  * ══════════════════════════════════════════════════════════ */
 register_activation_hook( __FILE__, function () {
     hoco_geo_register_llmstxt_rewrite();
@@ -394,7 +461,7 @@ register_activation_hook( __FILE__, function () {
 register_deactivation_hook( __FILE__, 'flush_rewrite_rules' );
 
 /* ════════════════════════════════════════════════════════════
- * 10. ADMIN NOTICE — מצב תוסף
+ * 12. ADMIN NOTICE — מצב תוסף
  * ══════════════════════════════════════════════════════════ */
 add_action( 'admin_notices', 'hoco_geo_admin_notice' );
 function hoco_geo_admin_notice() {
