@@ -3,7 +3,7 @@
  * Plugin Name:       HOCO Israel — GEO-SEO Optimizer
  * Plugin URI:        https://github.com/lirish1973/Ofnoacomps-CRM-System
  * Description:       מוסיף Organization Schema, Product Schema, תיקון Canonical, Security Headers ו-llms.txt לשיפור נראות ב-AI Search (ChatGPT, Perplexity, Google AIO).
- * Version:     1.0.3
+ * Version:     1.0.4
  * Author:            Ofnoacomps
  * Author URI:        https://github.com/lirish1973
  * License:           MIT
@@ -14,7 +14,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'HOCO_GEO_SEO_VERSION',     '1.0.3' );
+define( 'HOCO_GEO_SEO_VERSION',     '1.0.4' );
 define( 'HOCO_GEO_SEO_PLUGIN_DIR',  plugin_dir_path( __FILE__ ) );
 define( 'HOCO_GEO_SEO_PLUGIN_URL',  plugin_dir_url( __FILE__ ) );
 define( 'HOCO_GEO_SEO_PLUGIN_FILE', __FILE__ );
@@ -285,12 +285,12 @@ function hoco_geo_security_headers() {
     }
     header( 'Strict-Transport-Security: max-age=31536000; includeSubDomains; preload' );
     header( 'X-Frame-Options: SAMEORIGIN' );
-    header( 'X-Content-Type-Options: nosniff' );
+    // X-Content-Type-Options — sent by server already; skip to avoid duplicate
     header( 'Referrer-Policy: strict-origin-when-cross-origin' );
     header( 'Permissions-Policy: camera=(), microphone=(), geolocation=()' );
 
     // CSP — permissive for WordPress + Elementor + WooCommerce
-    // unsafe-inline/eval required by Elementor & WooCommerce JS/CSS
+    // Note: unsafe-inline/eval are required by Elementor & WooCommerce — cannot remove
     $csp  = "default-src 'self'; ";
     $csp .= "script-src 'self' 'unsafe-inline' 'unsafe-eval' https: blob:; ";
     $csp .= "style-src 'self' 'unsafe-inline' https: data:; ";
