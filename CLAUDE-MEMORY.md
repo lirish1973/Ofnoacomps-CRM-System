@@ -83,6 +83,29 @@
 
 ---
 
+## פלאגין hoco-geo-seo
+
+- **נתיב:** `wordpress-plugin/hoco-geo-seo/`
+- **קובץ ראשי:** `hoco-geo-seo.php`
+- **גרסה נוכחית:** 1.0.0
+- **VERSION CONST:** `HOCO_GEO_SEO_VERSION`
+- **מפתח ב-manifest:** `hoco-geo-seo`
+- **ZIP:** `wordpress-plugin/hoco-geo-seo.zip`
+- **עדכונים:** אוטומטי דרך `Ofnoacomps_GitHub_Updater` — אותו manifest כמו CRM
+- **Release:** `.\release-plugin.ps1 -Plugin hoco-geo-seo -Version X.X.X`
+
+פונקציונליות:
+1. Organization Schema (כל עמוד)
+2. WebSite + SearchAction Schema
+3. Product Schema (עמודי מוצר WooCommerce)
+4. ItemList Schema (עמוד הבית — 8 מוצרים אחרונים)
+5. Canonical www enforcement
+6. Security Headers: HSTS, X-Frame-Options, X-Content-Type, Referrer-Policy
+7. www redirect 301 מ-non-www
+8. llms.txt endpoint דינמי (`/llms.txt`)
+
+---
+
 ## client-snippets/hoco-popup.php
 לקוח: HOCO ישראל — פופ-אפ מועדון לקוחות
 

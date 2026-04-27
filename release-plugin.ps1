@@ -39,6 +39,12 @@ $PluginMap = @{
         NewZipName   = "smart-cart-recovery-v$Version.zip"
         DownloadUrl  = "$RawBase/smart-cart-recovery-v$Version.zip"
     }
+    'hoco-geo-seo' = @{
+        MainFile     = 'hoco-geo-seo.php'
+        VersionConst = 'HOCO_GEO_SEO_VERSION'
+        NewZipName   = 'hoco-geo-seo.zip'
+        DownloadUrl  = "$RawBase/hoco-geo-seo.zip"
+    }
 }
 
 # --- Validate inputs ---
