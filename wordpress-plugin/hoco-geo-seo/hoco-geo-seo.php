@@ -3,7 +3,7 @@
  * Plugin Name:       HOCO Israel — GEO-SEO Optimizer
  * Plugin URI:        https://github.com/lirish1973/Ofnoacomps-CRM-System
  * Description:       מוסיף Organization Schema, Product Schema, תיקון Canonical, Security Headers ו-llms.txt לשיפור נראות ב-AI Search (ChatGPT, Perplexity, Google AIO).
- * Version:     1.0.1
+ * Version:     1.0.2
  * Author:            Ofnoacomps
  * Author URI:        https://github.com/lirish1973
  * License:           MIT
@@ -14,7 +14,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'HOCO_GEO_SEO_VERSION',     '1.0.1' );
+define( 'HOCO_GEO_SEO_VERSION',     '1.0.2' );
 define( 'HOCO_GEO_SEO_PLUGIN_DIR',  plugin_dir_path( __FILE__ ) );
 define( 'HOCO_GEO_SEO_PLUGIN_URL',  plugin_dir_url( __FILE__ ) );
 define( 'HOCO_GEO_SEO_PLUGIN_FILE', __FILE__ );
@@ -291,30 +291,10 @@ function hoco_geo_security_headers() {
 }
 
 /* ════════════════════════════════════════════════════════════
- * 7. www REDIRECT — non-www → www (safe: skip admin/cron/ajax/REST)
+ * 7. www REDIRECT — הוסר (השרת מטפל בזה ברמת .htaccess/vhost)
  * ══════════════════════════════════════════════════════════ */
-add_action( 'template_redirect', 'hoco_geo_enforce_www' );
-function hoco_geo_enforce_www() {
-    // Never redirect inside admin, cron, AJAX, REST API, or CLI
-    if (
-        is_admin()
-        || wp_doing_cron()
-        || wp_doing_ajax()
-        || ( defined( 'REST_REQUEST' ) && REST_REQUEST )
-        || ( defined( 'WP_CLI' ) && WP_CLI )
-    ) {
-        return;
-    }
-
-    $host = isset( $_SERVER['HTTP_HOST'] ) ? sanitize_text_field( wp_unslash( $_SERVER['HTTP_HOST'] ) ) : '';
-
-    // Only redirect bare non-www — never redirect www (avoids loops)
-    if ( $host === 'hoco-israel.co.il' ) {
-        $uri = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '/';
-        wp_redirect( 'https://www.hoco-israel.co.il' . $uri, 301 );
-        exit;
-    }
-}
+// Redirect removed in v1.0.2 — caused ERR_TOO_MANY_REDIRECTS on some hosts.
+// Handle non-www → www at the server level (.htaccess or hosting panel).
 
 /* ════════════════════════════════════════════════════════════
  * 8. llms.txt — endpoint דינמי
