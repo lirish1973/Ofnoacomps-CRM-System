@@ -17,7 +17,7 @@
   "hoco-geo-seo": {
     "name": "HOCO Israel — GEO-SEO Optimizer",
     "slug": "hoco-geo-seo",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "tested": "6.7",
     "requires": "5.8",
     "requires_php": "7.4",

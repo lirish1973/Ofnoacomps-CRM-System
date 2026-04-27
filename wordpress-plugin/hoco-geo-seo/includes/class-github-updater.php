@@ -62,7 +62,7 @@ class Hoco_GEO_GitHub_Updater {
         // Admin: handle "Check for updates now" button click
         add_action( 'admin_init', [ $this, 'handle_force_check' ] );
 
-        // REST endpoint: POST /wp-json/ofnoacomps-crm/v1/flush-update-cache
+        // REST endpoint: POST /wp-json/hoco-geo-seo/v1/flush-update-cache
         // (used by release script for instant cache clear after push)
         add_action( 'rest_api_init', [ $this, 'register_flush_endpoint' ] );
     }
@@ -268,7 +268,7 @@ class Hoco_GEO_GitHub_Updater {
      * Header: X-OCRM-Flush-Token: <value of OCRM_UPDATE_SECRET constant>
      */
     public function register_flush_endpoint() {
-        register_rest_route( 'ofnoacomps-crm/v1', '/flush-update-cache', [
+        register_rest_route( 'hoco-geo-seo/v1', '/flush-update-cache', [
             'methods'             => 'POST',
             'callback'            => [ $this, 'rest_flush_cache' ],
             'permission_callback' => '__return_true',
