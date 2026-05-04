@@ -11,13 +11,16 @@
 
 defined( 'ABSPATH' ) || exit;
 
-define( 'OPB_VERSION', '1.0.3' );
-define( 'OPB_DIR',     plugin_dir_path( __FILE__ ) );
-define( 'OPB_URL',     plugin_dir_url( __FILE__ ) );
-define( 'OPB_FILE',    __FILE__ );
-define( 'OPB_OPTION',  'opb_settings' );
+// ── Constants (guarded — safe against double-load) ───────────────────────────
+if ( ! defined( 'OPB_VERSION' ) ) {
+    define( 'OPB_VERSION', '1.0.3' );
+    define( 'OPB_DIR',    plugin_dir_path( __FILE__ ) );
+    define( 'OPB_URL',    plugin_dir_url( __FILE__ ) );
+    define( 'OPB_FILE',   __FILE__ );
+    define( 'OPB_OPTION', 'opb_settings' );
+}
 
-// ── Default settings ────────────────────────────────────────────────────────
+// ── Default settings ─────────────────────────────────────────────────────────
 if ( ! function_exists( 'opb_defaults' ) ) {
     function opb_defaults() {
         return [
@@ -37,61 +40,63 @@ if ( ! function_exists( 'opb_defaults' ) ) {
     }
 }
 
-// Always merge saved option with defaults (works even without activation hook)
 if ( ! function_exists( 'opb_get_settings' ) ) {
     function opb_get_settings() {
         return wp_parse_args( (array) get_option( OPB_OPTION, [] ), opb_defaults() );
     }
 }
 
-// ── Auto-updater ────────────────────────────────────────────────────────────
-require_once OPB_DIR . 'includes/class-github-updater.php';
-new OPB_GitHub_Updater( OPB_FILE, 'ofnoacomps-postBadges', OPB_VERSION );
+// ── Bootstrap (deferred to plugins_loaded so all WP functions are available) ─
+if ( ! function_exists( 'opb_boot' ) ) {
+    function opb_boot() {
 
-// ── Core ────────────────────────────────────────────────────────────────────
-require_once OPB_DIR . 'includes/class-badge-renderer.php';
-require_once OPB_DIR . 'includes/class-meta-box.php';
+        // Auto-updater
+        if ( ! class_exists( 'OPB_GitHub_Updater' ) ) {
+            require_once OPB_DIR . 'includes/class-github-updater.php';
+        }
+        new OPB_GitHub_Updater( OPB_FILE, 'ofnoacomps-postBadges', OPB_VERSION );
 
-// ── Admin ───────────────────────────────────────────────────────────────────
-if ( is_admin() ) {
-    require_once OPB_DIR . 'admin/class-admin.php';
-    new OPB_Admin();
+        // Core classes
+        if ( ! class_exists( 'OPB_Badge_Renderer' ) ) {
+            require_once OPB_DIR . 'includes/class-badge-renderer.php';
+        }
+        if ( ! class_exists( 'OPB_Meta_Box' ) ) {
+            require_once OPB_DIR . 'includes/class-meta-box.php';
+        }
+        new OPB_Meta_Box();
+
+        // Admin
+        if ( is_admin() ) {
+            if ( ! class_exists( 'OPB_Admin' ) ) {
+                require_once OPB_DIR . 'admin/class-admin.php';
+            }
+            new OPB_Admin();
+        }
+    }
+    add_action( 'plugins_loaded', 'opb_boot', 1 );
 }
 
-new OPB_Meta_Box();
-
-// ── Frontend assets ─────────────────────────────────────────────────────────
-add_action( 'wp_enqueue_scripts', 'opb_enqueue_frontend' );
-function opb_enqueue_frontend() {
-    $s = opb_get_settings();
-    if ( empty( $s['enabled'] ) ) return;
-
-    wp_enqueue_style(  'opb-frontend', OPB_URL . 'assets/frontend.css', [], OPB_VERSION );
-    wp_enqueue_script( 'opb-frontend', OPB_URL . 'assets/frontend.js',  [], OPB_VERSION, true );
+// ── Frontend assets ──────────────────────────────────────────────────────────
+if ( ! function_exists( 'opb_enqueue_frontend' ) ) {
+    function opb_enqueue_frontend() {
+        $s = opb_get_settings();
+        if ( empty( $s['enabled'] ) ) return;
+        wp_enqueue_style(  'opb-frontend', OPB_URL . 'assets/frontend.css', [], OPB_VERSION );
+        wp_enqueue_script( 'opb-frontend', OPB_URL . 'assets/frontend.js',  [], OPB_VERSION, true );
+    }
+    add_action( 'wp_enqueue_scripts', 'opb_enqueue_frontend' );
 }
 
-/**
- * APPROACH: add data-opb-* attributes to the <img> tag via wp_get_attachment_image_attributes.
- * This fires for EVERY WordPress image render — including Elementor Loop, Posts widgets,
- * Gutenberg blocks, classic themes — because they all ultimately call wp_get_attachment_image().
- * A small JS then wraps eligible images with the badge overlay.
- */
+// ── Badge data-attributes filter ─────────────────────────────────────────────
 if ( ! function_exists( 'opb_add_badge_attrs' ) ) {
-    add_filter( 'wp_get_attachment_image_attributes', 'opb_add_badge_attrs', 20, 3 );
     function opb_add_badge_attrs( $attr, $attachment, $size ) {
-        // Guard: must be a valid array
-        if ( ! is_array( $attr ) ) return $attr;
-
-        // Guard: attachment must be a valid object with ID
+        if ( ! is_array( $attr ) )                                    return $attr;
         if ( ! is_object( $attachment ) || empty( $attachment->ID ) ) return $attr;
-
-        // Skip admin
-        if ( is_admin() ) return $attr;
+        if ( is_admin() )                                             return $attr;
 
         $s = opb_get_settings();
         if ( empty( $s['enabled'] ) ) return $attr;
 
-        // Determine current post context
         $post_id = (int) get_the_ID();
         if ( ! $post_id ) {
             global $post;
@@ -100,20 +105,16 @@ if ( ! function_exists( 'opb_add_badge_attrs' ) ) {
         }
         if ( ! $post_id ) return $attr;
 
-        // Only featured images
         $thumb_id = (int) get_post_thumbnail_id( $post_id );
         if ( ! $thumb_id || $thumb_id !== (int) $attachment->ID ) return $attr;
 
-        // Per-post: disabled?
         if ( get_post_meta( $post_id, '_opb_disabled', true ) ) return $attr;
 
         // Category / Tag filter
         $filter_mode  = isset( $s['filter_mode'] ) ? $s['filter_mode'] : 'all';
         $filter_terms = isset( $s['filter_terms'] ) ? (array) $s['filter_terms'] : [];
-
         if ( $filter_mode !== 'all' && ! empty( $filter_terms ) ) {
             $term_ids = array_map( 'intval', $filter_terms );
-
             if ( $filter_mode === 'categories' ) {
                 $cats = wp_get_post_categories( $post_id, [ 'fields' => 'ids' ] );
                 if ( empty( array_intersect( $term_ids, (array) $cats ) ) ) return $attr;
@@ -123,22 +124,19 @@ if ( ! function_exists( 'opb_add_badge_attrs' ) ) {
             }
         }
 
-        // Badge text: per-post → global default
         $text = (string) get_post_meta( $post_id, '_opb_text', true );
         if ( $text === '' ) $text = isset( $s['default_text'] ) ? (string) $s['default_text'] : '';
         if ( $text === '' ) return $attr;
 
-        // Per-post style overrides
-        $type   = get_post_meta( $post_id, '_opb_type',     true ) ?: ( isset( $s['type'] )     ? $s['type']     : 'square' );
-        $pos    = get_post_meta( $post_id, '_opb_position', true ) ?: ( isset( $s['position'] )  ? $s['position'] : 'top-right' );
-        $bg     = get_post_meta( $post_id, '_opb_bg',       true ) ?: ( isset( $s['bg_color'] )  ? $s['bg_color'] : '#e74c3c' );
-        $color  = get_post_meta( $post_id, '_opb_color',    true ) ?: ( isset( $s['text_color'] ) ? $s['text_color'] : '#ffffff' );
-        $fsize  = isset( $s['font_size'] )     ? (int) $s['font_size']     : 14;
-        $radius = ( $type === 'square' )
-            ? ( isset( $s['border_radius'] ) ? (int) $s['border_radius'] : 6 )
-            : 0;
+        $type   = get_post_meta( $post_id, '_opb_type',     true ) ?: ( $s['type']       ?? 'square' );
+        $pos    = get_post_meta( $post_id, '_opb_position', true ) ?: ( $s['position']   ?? 'top-right' );
+        $bg     = get_post_meta( $post_id, '_opb_bg',       true ) ?: ( $s['bg_color']   ?? '#e74c3c' );
+        $color  = get_post_meta( $post_id, '_opb_color',    true ) ?: ( $s['text_color'] ?? '#ffffff' );
+
+        $fsize  = (int) ( $s['font_size']     ?? 14 );
+        $radius = ( $type === 'square' ) ? (int) ( $s['border_radius'] ?? 6 ) : 0;
         $shadow = ! empty( $s['text_shadow'] )
-            ? 'text-shadow:1px 1px 3px ' . esc_attr( isset( $s['shadow_color'] ) ? $s['shadow_color'] : 'rgba(0,0,0,0.35)' ) . ';'
+            ? 'text-shadow:1px 1px 3px ' . esc_attr( $s['shadow_color'] ?? 'rgba(0,0,0,0.35)' ) . ';'
             : '';
 
         $inline = sprintf(
@@ -153,12 +151,15 @@ if ( ! function_exists( 'opb_add_badge_attrs' ) ) {
 
         return $attr;
     }
+    add_filter( 'wp_get_attachment_image_attributes', 'opb_add_badge_attrs', 20, 3 );
 }
 
-// ── Activation ──────────────────────────────────────────────────────────────
-register_activation_hook( OPB_FILE, 'opb_activate' );
-function opb_activate() {
-    if ( false === get_option( OPB_OPTION ) ) {
-        add_option( OPB_OPTION, opb_defaults() );
+// ── Activation ───────────────────────────────────────────────────────────────
+if ( ! function_exists( 'opb_activate' ) ) {
+    function opb_activate() {
+        if ( false === get_option( OPB_OPTION ) ) {
+            add_option( OPB_OPTION, opb_defaults() );
+        }
     }
+    register_activation_hook( OPB_FILE, 'opb_activate' );
 }
