@@ -17,7 +17,7 @@
   "ofnoacomps-postBadges": {
     "name": "Ofnoacomps Post Badges",
     "slug": "ofnoacomps-postbadges",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "tested": "6.7",
     "requires": "5.8",
     "requires_php": "7.4",

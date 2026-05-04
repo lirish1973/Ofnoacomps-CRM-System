@@ -1,11 +1,11 @@
 /* ============================================================
-   Ofnoacomps Post Badges — Frontend Styles  v1.0.2
+   Ofnoacomps Post Badges — Frontend Styles  v1.0.5
    ============================================================ */
 
 /* ── Thumbnail wrapper ─────────────────────────────────────── */
 .opb-wrap {
   position: relative;
-  display: block;           /* fills parent; JS overrides to flex when needed */
+  display: block;           /* fills parent container */
   overflow: visible;        /* never clip the badge */
   line-height: 0;           /* remove gap under inline images */
   max-width: 100%;
@@ -36,7 +36,6 @@ a > .opb-wrap,
   letter-spacing: 0.04em;
   line-height: 1.2;
   white-space: nowrap;
-  /* Smooth appearance after JS fires */
   animation: opb-fadein 0.15s ease;
 }
 
