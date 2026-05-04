@@ -3,7 +3,7 @@
  * Plugin Name: Ofnoacomps Post Badges
  * Plugin URI:  https://www.ofnoacomps.co.il
  * Description: מוסיף Badge (תווית) על תמונת הפוסט עם שליטה מלאה על עיצוב, מיקום וצבעים. עובד עם Elementor Loop, תמות קלאסיות ובלוקים.
- * Version:     1.0.3
+ * Version:     1.0.4
  * Author:      Ofnoacomps
  * Text Domain: ofnoacomps-postbadges
  * Domain Path: /languages
@@ -13,7 +13,7 @@ defined( 'ABSPATH' ) || exit;
 
 // ── Constants (guarded — safe against double-load) ───────────────────────────
 if ( ! defined( 'OPB_VERSION' ) ) {
-    define( 'OPB_VERSION', '1.0.3' );
+    define( 'OPB_VERSION', '1.0.4' );
     define( 'OPB_DIR',    plugin_dir_path( __FILE__ ) );
     define( 'OPB_URL',    plugin_dir_url( __FILE__ ) );
     define( 'OPB_FILE',   __FILE__ );

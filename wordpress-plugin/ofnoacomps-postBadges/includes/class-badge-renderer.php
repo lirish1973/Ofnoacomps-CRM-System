@@ -35,10 +35,10 @@ class OPB_Badge_Renderer {
         $per_post_bg       = get_post_meta( $post_id, '_opb_bg',      true );
         $per_post_color    = get_post_meta( $post_id, '_opb_color',   true );
 
-        $type     = $per_post_type     ?: ( isset( $settings['type'] )     ? $settings['type']     : 'square' );
-        $position = $per_post_position ?: ( isset( $settings['position'] ) ? $settings['position'] : 'top-right' );
-        $bg       = $per_post_bg       ?: ( isset( $settings['bg_color'] ) ? $settings['bg_color'] : '#e74c3c' );
-        $color    = $per_post_color    ?: ( isset( $settings['text_color'] ) ? $settings['text_color'] : '#ffffff' );
+        $type     = $per_post_type     ? $per_post_type     : ( isset( $settings['type'] )       ? $settings['type']       : 'square' );
+        $position = $per_post_position ? $per_post_position : ( isset( $settings['position'] )   ? $settings['position']   : 'top-right' );
+        $bg       = $per_post_bg       ? $per_post_bg       : ( isset( $settings['bg_color'] )   ? $settings['bg_color']   : '#e74c3c' );
+        $color    = $per_post_color    ? $per_post_color    : ( isset( $settings['text_color'] ) ? $settings['text_color'] : '#ffffff' );
         $size     = isset( $settings['font_size'] )   ? intval( $settings['font_size'] )   : 14;
         $shadow   = ! empty( $settings['text_shadow'] );
         $shadow_color = isset( $settings['shadow_color'] ) ? $settings['shadow_color'] : 'rgba(0,0,0,0.4)';
@@ -57,11 +57,11 @@ class OPB_Badge_Renderer {
         }
 
         // --- Build CSS classes ---
-        $classes = implode( ' ', [
+        $classes = implode( ' ', array(
             'opb-badge',
             'opb-type--' . esc_attr( $type ),
             'opb-pos--'  . esc_attr( $position ),
-        ] );
+        ) );
 
         $badge_html = sprintf(
             '<span class="%s" style="%s" aria-hidden="true">%s</span>',
@@ -91,11 +91,11 @@ class OPB_Badge_Renderer {
      * @return array  slug => label
      */
     public static function types() {
-        return [
-            'square' => 'ריבוע (פינה)',
-            'side'   => 'צד (רצועה אנכית)',
-            'ribbon' => 'מצד לצד (סרט מלא)',
-        ];
+        return array(
+            'square' => "\xd7\xa8\xd7\x99\xd7\x91\xd7\x95\xd7\xa2 (\xd7\xa4\xd7\x99\xd7\xa0\xd7\x94)",
+            'side'   => "\xd7\xa6\xd7\x93 (\xd7\xa8\xd7\xa6\xd7\x95\xd7\xa2\xd7\x94 \xd7\x90\xd7\xa0\xd7\x9b\xd7\x99\xd7\xaa)",
+            'ribbon' => "\xd7\x9e\xd7\xa6\xd7\x93 \xd7\x9c\xd7\xa6\xd7\x93 (\xd7\xa1\xd7\xa8\xd7\x98 \xd7\x9e\xd7\x9c\xd7\x90)",
+        );
     }
 
     /**
@@ -106,22 +106,22 @@ class OPB_Badge_Renderer {
     public static function positions( $type = 'square' ) {
         switch ( $type ) {
             case 'side':
-                return [
-                    'left'  => 'שמאל',
-                    'right' => 'ימין',
-                ];
+                return array(
+                    'left'  => "\xd7\xa9\xd7\x9e\xd7\x90\xd7\x9c",
+                    'right' => "\xd7\x99\xd7\x9e\xd7\x99\xd7\x9f",
+                );
             case 'ribbon':
-                return [
-                    'top'    => 'למעלה',
-                    'bottom' => 'למטה',
-                ];
+                return array(
+                    'top'    => "\xd7\x9c\xd7\x9e\xd7\xa2\xd7\x9c\xd7\x94",
+                    'bottom' => "\xd7\x9c\xd7\x9e\xd7\x98\xd7\x94",
+                );
             default: // square
-                return [
-                    'top-right'    => 'פינה ימין עליונה',
-                    'top-left'     => 'פינה שמאל עליונה',
-                    'bottom-right' => 'פינה ימין תחתונה',
-                    'bottom-left'  => 'פינה שמאל תחתונה',
-                ];
+                return array(
+                    'top-right'    => "\xd7\xa4\xd7\x99\xd7\xa0\xd7\x94 \xd7\x99\xd7\x9e\xd7\x99\xd7\x9f \xd7\xa2\xd7\x9c\xd7\x99\xd7\x95\xd7\xa0\xd7\x94",
+                    'top-left'     => "\xd7\xa4\xd7\x99\xd7\xa0\xd7\x94 \xd7\xa9\xd7\x9e\xd7\x90\xd7\x9c \xd7\xa2\xd7\x9c\xd7\x99\xd7\x95\xd7\xa0\xd7\x94",
+                    'bottom-right' => "\xd7\xa4\xd7\x99\xd7\xa0\xd7\x94 \xd7\x99\xd7\x9e\xd7\x99\xd7\x9f \xd7\xaa\xd7\x97\xd7\xaa\xd7\x95\xd7\xa0\xd7\x94",
+                    'bottom-left'  => "\xd7\xa4\xd7\x99\xd7\xa0\xd7\x94 \xd7\xa9\xd7\x9e\xd7\x90\xd7\x9c \xd7\xaa\xd7\x97\xd7\xaa\xd7\x95\xd7\xa0\xd7\x94",
+                );
         }
     }
 }

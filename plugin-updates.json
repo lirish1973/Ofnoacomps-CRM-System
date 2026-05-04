@@ -17,7 +17,7 @@
   "ofnoacomps-postBadges": {
     "name": "Ofnoacomps Post Badges",
     "slug": "ofnoacomps-postbadges",
-    "version": "1.0.3",
+    "version": "1.0.4",
     "tested": "6.7",
     "requires": "5.8",
     "requires_php": "7.4",
@@ -27,7 +27,7 @@
     "description": "מוסיף Badge (תווית) על תמונת הפוסט עם שליטה מלאה על עיצוב, מיקום, צבע רקע, צבע טקסט, גודל וצל. שלושה סוגי Badge: ריבוע בפינה, רצועה אנכית לצד, וסרט רוחב מלא.",
     "author": "Ofnoacomps",
     "author_homepage": "https://github.com/lirish1973",
-    "changelog": "<h4>1.0.3 - 2026-05-04</h4><ul><li>תיקון קריטי: class_exists() guard על כל הקלאסים — מונע Fatal Error ב-PHP אם הפלאגין נטען פעמיים</li><li>תיקון קריטי: CACHE_TTL = 3600 (מספר ישיר, ללא תלות בקבועי WordPress)</li><li>function_exists() guard על כל הפונקציות הגלובליות</li><li>PHP 8.x safe: null checks מלאים ב-opb_add_badge_attrs</li><li>טיפוס-בטוח: כל הערכים מוגנים עם isset() לפני שימוש</li></ul><h4>1.0.2 - 2026-05-04</h4><ul><li>MutationObserver — תמיכה בטעינה דינמית ו-AJAX</li><li>תיקוני flex/grid לקלפי Elementor</li></ul>"
+    "changelog": "<h4>1.0.4 - 2026-05-04</h4><ul><li>תיקון קריטי: שחזור קובץ class-badge-renderer.php שנחתך (נגרם שגיאה חמורה בהפעלה)</li><li>הסרת כל אופרטורי ?? (null coalescing) — תאימות PHP 5.4+</li><li>class_exists() + function_exists() guards על כל הקלאסים והפונקציות</li><li>CACHE_TTL = 3600 כמספר ישיר</li></ul><h4>1.0.3 - 2026-05-04</h4><ul><li>תיקון קריטי: function_exists() guard לכל הפונקציות הגלובליות</li><li>תיקון קריטי: מבנה opb_boot() על plugins_loaded</li></ul><h4>1.0.2 - 2026-05-04</h4><ul><li>MutationObserver — תמיכה בטעינה דינמית ו-AJAX</li><li>תיקוני flex/grid לקלפי Elementor</li></ul>"
   },
   "hoco-geo-seo": {
     "name": "HOCO Israel — GEO-SEO Optimizer",
