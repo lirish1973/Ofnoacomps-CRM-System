@@ -5,6 +5,7 @@
 # Usage:
 #   .\release-plugin.ps1 -Plugin ofnoacomps-crm -Version 1.4.2
 #   .\release-plugin.ps1 -Plugin smart-cart-recovery -Version 1.2.0
+#   .\release-plugin.ps1 -Plugin ofnoacomps-postBadges -Version 1.0.1
 
 param(
     [Parameter(Mandatory)][string]$Plugin,
@@ -44,6 +45,12 @@ $PluginMap = @{
         VersionConst = 'HOCO_GEO_SEO_VERSION'
         NewZipName   = 'hoco-geo-seo.zip'
         DownloadUrl  = "$RawBase/hoco-geo-seo.zip"
+    }
+    'ofnoacomps-postBadges' = @{
+        MainFile     = 'ofnoacomps-postBadges.php'
+        VersionConst = 'OPB_VERSION'
+        NewZipName   = 'ofnoacomps-postBadges.zip'
+        DownloadUrl  = "$RawBase/ofnoacomps-postBadges.zip"
     }
 }
 

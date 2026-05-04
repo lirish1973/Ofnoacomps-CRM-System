@@ -1,10 +1,5 @@
 name: Auto-Update Plugin Manifest
 
-# Safety net: runs when PHP files OR plugin assets change.
-# Skips entirely if plugin-updates.json already has the correct version
-# (meaning release.bat already did the work).
-# Uses git pull --rebase before push to handle any race conditions.
-
 on:
   push:
     branches: [main]
@@ -12,92 +7,140 @@ on:
       - 'wordpress-plugin/ofnoacomps-crm/**/*.php'
       - 'wordpress-plugin/ofnoacomps-crm/*.php'
       - 'wordpress-plugin/ofnoacomps-crm/assets/**'
-      - 'wordpress-plugin/ofnoacomps-crm/assets/*.js'
-      - 'wordpress-plugin/ofnoacomps-crm/assets/*.css'
+      - 'wordpress-plugin/ofnoacomps-postBadges/**/*.php'
+      - 'wordpress-plugin/ofnoacomps-postBadges/*.php'
+      - 'wordpress-plugin/ofnoacomps-postBadges/assets/**'
 
 jobs:
-  update-manifest:
+
+  build-crm:
+    name: Build ofnoacomps-crm
     runs-on: ubuntu-latest
     if: github.actor != 'github-actions[bot]'
-
     permissions:
       contents: write
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Extract plugin version
-        id: meta
+      - name: Check if CRM files changed
+        id: crm_changed
         run: |
-          VERSION=$(grep -m1 "OFNOACOMPS_CRM_VERSION" \
-            wordpress-plugin/ofnoacomps-crm/ofnoacomps-crm.php \
-            | grep -oP "'\K[0-9.]+")
-          if [ -z "$VERSION" ]; then
-            echo "ERROR: Could not extract version"
-            exit 1
-          fi
+          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null | grep "^wordpress-plugin/ofnoacomps-crm/" || true)
+          if [ -z "$CHANGED" ]; then echo "changed=false" >> $GITHUB_OUTPUT
+          else echo "changed=true" >> $GITHUB_OUTPUT; fi
+
+      - name: Extract CRM version
+        id: meta
+        if: steps.crm_changed.outputs.changed == 'true'
+        run: |
+          VERSION=$(grep -m1 "OFNOACOMPS_CRM_VERSION" wordpress-plugin/ofnoacomps-crm/ofnoacomps-crm.php | grep -oP "'\K[0-9.]+")
+          [ -z "$VERSION" ] && exit 1
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "today=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
-          echo "Detected version: $VERSION"
 
-      - name: Check if manifest already up to date
+      - name: Check manifest vs CRM version
         id: check
+        if: steps.crm_changed.outputs.changed == 'true'
         run: |
-          MANIFEST_VER=$(python3 -c "import json; d=json.load(open('plugin-updates.json')); print(d['ofnoacomps-crm']['version'])")
-          PHP_VER="${{ steps.meta.outputs.version }}"
-          echo "Manifest: $MANIFEST_VER | PHP: $PHP_VER"
-          if [ "$MANIFEST_VER" = "$PHP_VER" ]; then
-            echo "skip=true" >> $GITHUB_OUTPUT
-            echo "Manifest already at $PHP_VER — skipping (release.bat already ran)."
-          else
-            echo "skip=false" >> $GITHUB_OUTPUT
-            echo "Manifest is behind ($MANIFEST_VER < $PHP_VER) — will update."
-          fi
+          MV=$(python3 -c "import json; d=json.load(open('plugin-updates.json')); print(d['ofnoacomps-crm']['version'])")
+          PV="${{ steps.meta.outputs.version }}"
+          [ "$MV" = "$PV" ] && echo "skip=true" >> $GITHUB_OUTPUT || echo "skip=false" >> $GITHUB_OUTPUT
 
-      - name: Build plugin ZIP
-        if: steps.check.outputs.skip == 'false'
+      - name: Build ofnoacomps-crm ZIP
+        if: steps.crm_changed.outputs.changed == 'true' && steps.check.outputs.skip == 'false'
         run: |
-          cd wordpress-plugin
-          rm -f ofnoacomps-crm.zip
-          zip -r ofnoacomps-crm.zip ofnoacomps-crm/ \
-            --exclude "*.DS_Store" --exclude "*Thumbs.db" --exclude "*.log"
-          echo "ZIP: $(du -h ofnoacomps-crm.zip | cut -f1)"
+          cd wordpress-plugin && rm -f ofnoacomps-crm.zip
+          zip -r ofnoacomps-crm.zip ofnoacomps-crm/ --exclude "*.DS_Store" --exclude "*Thumbs.db"
 
-      - name: Update plugin-updates.json
-        if: steps.check.outputs.skip == 'false'
+      - name: Update manifest (CRM)
+        if: steps.crm_changed.outputs.changed == 'true' && steps.check.outputs.skip == 'false'
         run: |
-          python3 - <<'PYEOF'
+          python3 - <<'PY'
           import json, os
-          with open('plugin-updates.json', 'r', encoding='utf-8') as f:
-              m = json.load(f)
+          with open('plugin-updates.json','r',encoding='utf-8') as f: m=json.load(f)
           m['ofnoacomps-crm']['version']      = os.environ['PLUGIN_VERSION']
           m['ofnoacomps-crm']['last_updated'] = os.environ['TODAY']
-          m['ofnoacomps-crm']['download_url'] = (
-              'https://github.com/lirish1973/Ofnoacomps-CRM-System'
-              '/raw/main/wordpress-plugin/ofnoacomps-crm.zip')
-          with open('plugin-updates.json', 'w', encoding='utf-8') as f:
-              json.dump(m, f, ensure_ascii=False, indent=2)
-          print(f"Updated manifest to {os.environ['PLUGIN_VERSION']}")
-          PYEOF
+          m['ofnoacomps-crm']['download_url'] = 'https://github.com/lirish1973/Ofnoacomps-CRM-System/raw/main/wordpress-plugin/ofnoacomps-crm.zip'
+          with open('plugin-updates.json','w',encoding='utf-8') as f: json.dump(m,f,ensure_ascii=False,indent=2)
+          PY
         env:
           PLUGIN_VERSION: ${{ steps.meta.outputs.version }}
-          TODAY:          ${{ steps.meta.outputs.today }}
+          TODAY: ${{ steps.meta.outputs.today }}
 
-      - name: Commit and push
-        if: steps.check.outputs.skip == 'false'
+      - name: Commit and push (CRM)
+        if: steps.crm_changed.outputs.changed == 'true' && steps.check.outputs.skip == 'false'
         run: |
-          git config user.name  "github-actions[bot]"
+          git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add wordpress-plugin/ofnoacomps-crm.zip plugin-updates.json
-          if git diff --staged --quiet; then
-            echo "Nothing to commit."
-          else
-            git commit -m "auto: build ofnoacomps-crm v${{ steps.meta.outputs.version }} [skip ci]"
-            # Pull rebase first to avoid rejection if release.bat pushed in parallel
-            git pull --rebase origin main
-            git push origin main
-            echo "Pushed."
-          fi
+          git diff --staged --quiet && echo "Nothing to commit" && exit 0
+          git commit -m "auto: build ofnoacomps-crm v${{ steps.meta.outputs.version }} [skip ci]"
+          git pull --rebase origin main && git push origin main
+
+  build-postbadges:
+    name: Build ofnoacomps-postBadges
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check if postBadges files changed
+        id: pb_changed
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null | grep "^wordpress-plugin/ofnoacomps-postBadges/" || true)
+          if [ -z "$CHANGED" ]; then echo "changed=false" >> $GITHUB_OUTPUT
+          else echo "changed=true" >> $GITHUB_OUTPUT; fi
+
+      - name: Extract postBadges version
+        id: meta
+        if: steps.pb_changed.outputs.changed == 'true'
+        run: |
+          VERSION=$(grep -m1 "OPB_VERSION" wordpress-plugin/ofnoacomps-postBadges/ofnoacomps-postBadges.php | grep -oP "'\K[0-9.]+")
+          [ -z "$VERSION" ] && exit 1
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "today=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
+
+      - name: Check manifest vs postBadges version
+        id: check
+        if: steps.pb_changed.outputs.changed == 'true'
+        run: |
+          MV=$(python3 -c "import json; d=json.load(open('plugin-updates.json')); print(d['ofnoacomps-postBadges']['version'])")
+          PV="${{ steps.meta.outputs.version }}"
+          [ "$MV" = "$PV" ] && echo "skip=true" >> $GITHUB_OUTPUT || echo "skip=false" >> $GITHUB_OUTPUT
+
+      - name: Build ofnoacomps-postBadges ZIP
+        if: steps.pb_changed.outputs.changed == 'true' && steps.check.outputs.skip == 'false'
+        run: |
+          cd wordpress-plugin && rm -f ofnoacomps-postBadges.zip
+          zip -r ofnoacomps-postBadges.zip ofnoacomps-postBadges/ --exclude "*.DS_Store" --exclude "*Thumbs.db"
+
+      - name: Update manifest (postBadges)
+        if: steps.pb_changed.outputs.changed == 'true' && steps.check.outputs.skip == 'false'
+        run: |
+          python3 - <<'PY'
+          import json, os
+          with open('plugin-updates.json','r',encoding='utf-8') as f: m=json.load(f)
+          m['ofnoacomps-postBadges']['version']      = os.environ['PLUGIN_VERSION']
+          m['ofnoacomps-postBadges']['last_updated'] = os.environ['TODAY']
+          m['ofnoacomps-postBadges']['download_url'] = 'https://github.com/lirish1973/Ofnoacomps-CRM-System/raw/main/wordpress-plugin/ofnoacomps-postBadges.zip'
+          with open('plugin-updates.json','w',encoding='utf-8') as f: json.dump(m,f,ensure_ascii=False,indent=2)
+          PY
+        env:
+          PLUGIN_VERSION: ${{ steps.meta.outputs.version }}
+          TODAY: ${{ steps.meta.outputs.today }}
+
+      - name: Commit and push (postBadges)
+        if: steps.pb_changed.outputs.changed == 'true' && steps.check.outputs.skip == 'false'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add wordpress-plugin/ofnoacomps-postBadges.zip plugin-updates.json
+          git diff --staged --quiet && echo "Nothing to commit" && exit 0
+          git commit -m "auto: build ofnoacomps-postBadges v${{ steps.meta.outputs.version }} [skip ci]"
+          git pull --rebase origin main && git push origin main

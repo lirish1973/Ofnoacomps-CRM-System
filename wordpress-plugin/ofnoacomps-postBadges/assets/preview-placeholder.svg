@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="280" height="190" viewBox="0 0 280 190">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#e0e7ff"/>
+      <stop offset="100%" style="stop-color:#c7d2fe"/>
+    </linearGradient>
+  </defs>
+  <rect width="280" height="190" fill="url(#bg)" rx="0"/>
+  <!-- Mountains -->
+  <polygon points="0,130 70,60 140,130" fill="#a5b4fc" opacity="0.6"/>
+  <polygon points="90,130 170,50 250,130" fill="#818cf8" opacity="0.7"/>
+  <polygon points="140,130 220,75 280,130" fill="#6366f1" opacity="0.5"/>
+  <!-- Sun -->
+  <circle cx="220" cy="45" r="22" fill="#fde68a" opacity="0.9"/>
+  <!-- Ground -->
+  <rect x="0" y="140" width="280" height="50" fill="#6366f1" opacity="0.3"/>
+  <!-- Camera icon -->
+  <g transform="translate(118,75)" opacity="0.4">
+    <rect x="0" y="8" width="44" height="30" rx="3" fill="#4338ca"/>
+    <circle cx="22" cy="23" r="9" fill="#e0e7ff"/>
+    <circle cx="22" cy="23" r="6" fill="#4338ca"/>
+    <rect x="14" y="5" width="16" height="6" rx="2" fill="#4338ca"/>
+  </g>
+  <!-- Text -->
+  <text x="140" y="170" text-anchor="middle" font-family="sans-serif" font-size="11" fill="#4338ca" opacity="0.6">תמונת פוסט לדוגמה</text>
+</svg>

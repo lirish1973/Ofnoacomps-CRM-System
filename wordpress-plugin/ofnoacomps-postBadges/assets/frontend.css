@@ -1,0 +1,99 @@
+/* ============================================================
+   Ofnoacomps Post Badges — Frontend Styles  v1.0.2
+   ============================================================ */
+
+/* ── Thumbnail wrapper ─────────────────────────────────────── */
+.opb-wrap {
+  position: relative;
+  display: block;           /* fills parent; JS overrides to flex when needed */
+  overflow: visible;        /* never clip the badge */
+  line-height: 0;           /* remove gap under inline images */
+  max-width: 100%;
+  width: 100%;              /* fill parent container (Elementor cards, etc.) */
+  flex-shrink: 0;           /* don't shrink inside a flex card */
+  box-sizing: border-box;
+}
+
+.opb-wrap img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Elementor / theme link wrappers that are inline-block — make them block */
+a > .opb-wrap,
+.elementor-post__thumbnail > a > .opb-wrap {
+  display: block;
+}
+
+/* ── Base badge ────────────────────────────────────────────── */
+.opb-badge {
+  position: absolute;
+  z-index: 10;
+  pointer-events: none;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  white-space: nowrap;
+  /* Smooth appearance after JS fires */
+  animation: opb-fadein 0.15s ease;
+}
+
+@keyframes opb-fadein {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ============================================================
+   TYPE: square — corner badge
+   ============================================================ */
+.opb-badge.opb-type--square {
+  padding: 5px 11px;
+}
+
+.opb-badge.opb-type--square.opb-pos--top-right    { top: 10px;    right: 10px;  }
+.opb-badge.opb-type--square.opb-pos--top-left     { top: 10px;    left: 10px;   }
+.opb-badge.opb-type--square.opb-pos--bottom-right { bottom: 10px; right: 10px;  }
+.opb-badge.opb-type--square.opb-pos--bottom-left  { bottom: 10px; left: 10px;   }
+
+/* ============================================================
+   TYPE: side — vertical strip
+   ============================================================ */
+.opb-badge.opb-type--side {
+  top: 0;
+  bottom: 0;
+  width: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  padding: 12px 4px;
+  border-radius: 0 !important;
+}
+
+.opb-badge.opb-type--side.opb-pos--left  { left: 0;  transform: rotate(180deg); }
+.opb-badge.opb-type--side.opb-pos--right { right: 0; }
+
+/* ============================================================
+   TYPE: ribbon — full-width banner
+   ============================================================ */
+.opb-badge.opb-type--ribbon {
+  left: 0;
+  right: 0;
+  width: 100%;
+  text-align: center;
+  padding: 8px 12px;
+  border-radius: 0 !important;
+  white-space: normal;
+  line-height: 1.4;
+}
+
+.opb-badge.opb-type--ribbon.opb-pos--top    { top: 0;    }
+.opb-badge.opb-type--ribbon.opb-pos--bottom { bottom: 0; }
+
+/* ── Accessibility ─────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .opb-badge { animation: none; }
+}
