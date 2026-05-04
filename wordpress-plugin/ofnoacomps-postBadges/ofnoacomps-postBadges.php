@@ -128,15 +128,15 @@ if ( ! function_exists( 'opb_add_badge_attrs' ) ) {
         if ( $text === '' ) $text = isset( $s['default_text'] ) ? (string) $s['default_text'] : '';
         if ( $text === '' ) return $attr;
 
-        $type   = get_post_meta( $post_id, '_opb_type',     true ) ?: ( $s['type']       ?? 'square' );
-        $pos    = get_post_meta( $post_id, '_opb_position', true ) ?: ( $s['position']   ?? 'top-right' );
-        $bg     = get_post_meta( $post_id, '_opb_bg',       true ) ?: ( $s['bg_color']   ?? '#e74c3c' );
-        $color  = get_post_meta( $post_id, '_opb_color',    true ) ?: ( $s['text_color'] ?? '#ffffff' );
+        $type   = get_post_meta( $post_id, '_opb_type',     true ) ?: ( isset( $s['type'] )       ? $s['type']       : 'square' );
+        $pos    = get_post_meta( $post_id, '_opb_position', true ) ?: ( isset( $s['position'] )   ? $s['position']   : 'top-right' );
+        $bg     = get_post_meta( $post_id, '_opb_bg',       true ) ?: ( isset( $s['bg_color'] )   ? $s['bg_color']   : '#e74c3c' );
+        $color  = get_post_meta( $post_id, '_opb_color',    true ) ?: ( isset( $s['text_color'] ) ? $s['text_color'] : '#ffffff' );
 
-        $fsize  = (int) ( $s['font_size']     ?? 14 );
-        $radius = ( $type === 'square' ) ? (int) ( $s['border_radius'] ?? 6 ) : 0;
+        $fsize  = (int) ( isset( $s['font_size'] )     ? $s['font_size']     : 14 );
+        $radius = ( $type === 'square' ) ? (int) ( isset( $s['border_radius'] ) ? $s['border_radius'] : 6 ) : 0;
         $shadow = ! empty( $s['text_shadow'] )
-            ? 'text-shadow:1px 1px 3px ' . esc_attr( $s['shadow_color'] ?? 'rgba(0,0,0,0.35)' ) . ';'
+            ? 'text-shadow:1px 1px 3px ' . esc_attr( isset( $s['shadow_color'] ) ? $s['shadow_color'] : 'rgba(0,0,0,0.35)' ) . ';'
             : '';
 
         $inline = sprintf(

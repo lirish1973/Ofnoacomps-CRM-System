@@ -38,19 +38,19 @@ class OPB_Admin {
         $clean = opb_defaults();
 
         $clean['enabled']       = ! empty( $input['enabled'] ) ? 1 : 0;
-        $clean['default_text']  = sanitize_text_field( $input['default_text'] ?? '' );
-        $clean['type']          = in_array( $input['type'] ?? '', [ 'square', 'side', 'ribbon' ], true )
+        $clean['default_text']  = sanitize_text_field( isset( $input['default_text'] ) ? $input['default_text'] : '' );
+        $clean['type']          = in_array( isset( $input['type'] ) ? $input['type'] : '', array( 'square', 'side', 'ribbon' ), true )
                                     ? $input['type'] : 'square';
-        $clean['position']      = sanitize_text_field( $input['position'] ?? 'top-right' );
-        $clean['bg_color']      = sanitize_hex_color( $input['bg_color']   ?? '#e74c3c' ) ?: '#e74c3c';
-        $clean['text_color']    = sanitize_hex_color( $input['text_color'] ?? '#ffffff' ) ?: '#ffffff';
-        $clean['font_size']     = max( 8, min( 72, intval( $input['font_size']     ?? 14 ) ) );
+        $clean['position']      = sanitize_text_field( isset( $input['position'] )      ? $input['position']      : 'top-right' );
+        $clean['bg_color']      = sanitize_hex_color( isset( $input['bg_color'] )       ? $input['bg_color']      : '#e74c3c' ) ?: '#e74c3c';
+        $clean['text_color']    = sanitize_hex_color( isset( $input['text_color'] )     ? $input['text_color']    : '#ffffff' ) ?: '#ffffff';
+        $clean['font_size']     = max( 8, min( 72, intval( isset( $input['font_size'] )     ? $input['font_size']     : 14 ) ) );
         $clean['text_shadow']   = ! empty( $input['text_shadow'] ) ? 1 : 0;
-        $clean['shadow_color']  = sanitize_text_field( $input['shadow_color']  ?? 'rgba(0,0,0,0.35)' );
-        $clean['border_radius'] = max( 0, min( 50, intval( $input['border_radius'] ?? 6 ) ) );
+        $clean['shadow_color']  = sanitize_text_field( isset( $input['shadow_color'] )  ? $input['shadow_color']  : 'rgba(0,0,0,0.35)' );
+        $clean['border_radius'] = max( 0, min( 50, intval( isset( $input['border_radius'] ) ? $input['border_radius'] : 6 ) ) );
 
         // Filter
-        $clean['filter_mode']  = in_array( $input['filter_mode'] ?? 'all', [ 'all', 'categories', 'tags' ], true )
+        $clean['filter_mode']  = in_array( isset( $input['filter_mode'] ) ? $input['filter_mode'] : 'all', array( 'all', 'categories', 'tags' ), true )
                                     ? $input['filter_mode'] : 'all';
         $raw_terms = isset( $input['filter_terms'] ) ? (array) $input['filter_terms'] : [];
         $clean['filter_terms'] = array_values( array_map( 'intval', $raw_terms ) );
