@@ -6,6 +6,8 @@
 
 defined( 'ABSPATH' ) || exit;
 
+if ( ! class_exists( 'OPB_Meta_Box' ) ) :
+
 class OPB_Meta_Box {
 
     public function __construct() {
@@ -115,3 +117,5 @@ class OPB_Meta_Box {
         }
     }
 }
+
+endif; // class_exists OPB_Meta_Box

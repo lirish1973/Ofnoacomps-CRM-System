@@ -4,6 +4,8 @@
  */
 defined( 'ABSPATH' ) || exit;
 
+if ( ! class_exists( 'OPB_Admin' ) ) :
+
 class OPB_Admin {
 
     public function __construct() {
@@ -104,3 +106,5 @@ class OPB_Admin {
         return get_tags( [ 'hide_empty' => false, 'orderby' => 'name' ] );
     }
 }
+
+endif; // class_exists OPB_Admin

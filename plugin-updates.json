@@ -17,7 +17,7 @@
   "ofnoacomps-postBadges": {
     "name": "Ofnoacomps Post Badges",
     "slug": "ofnoacomps-postbadges",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "tested": "6.7",
     "requires": "5.8",
     "requires_php": "7.4",
@@ -27,7 +27,7 @@
     "description": "מוסיף Badge (תווית) על תמונת הפוסט עם שליטה מלאה על עיצוב, מיקום, צבע רקע, צבע טקסט, גודל וצל. שלושה סוגי Badge: ריבוע בפינה, רצועה אנכית לצד, וסרט רוחב מלא.",
     "author": "Ofnoacomps",
     "author_homepage": "https://github.com/lirish1973",
-    "changelog": "<h4>1.0.2 - 2026-05-04</h4><ul><li>MutationObserver — תמיכה בטעינה דינמית, infinite scroll ו-AJAX pagination</li><li>תיקון תאימות flex/grid — הבאדג׳ לא שובר עוד את פריסת קלפי Elementor</li><li>אנימציית כניסה משופרת (scale + fade)</li><li>הסרת אפקט clip מ-.opb-wrap בתוך תגי קישור</li></ul><h4>1.0.1 - 2026-05-04</h4><ul><li>תמיכה מלאה ב-Elementor Loop — מעבר ל-wp_get_attachment_image_attributes + JS DOM wrapping</li><li>סינון לפי קטגוריה / תג — הבאדג׳ מופיע רק על פוסטים מוגדרים</li><li>תיקון CSS: overflow: visible, display: block</li></ul>"
+    "changelog": "<h4>1.0.3 - 2026-05-04</h4><ul><li>תיקון קריטי: class_exists() guard על כל הקלאסים — מונע Fatal Error ב-PHP אם הפלאגין נטען פעמיים</li><li>תיקון קריטי: CACHE_TTL = 3600 (מספר ישיר, ללא תלות בקבועי WordPress)</li><li>function_exists() guard על כל הפונקציות הגלובליות</li><li>PHP 8.x safe: null checks מלאים ב-opb_add_badge_attrs</li><li>טיפוס-בטוח: כל הערכים מוגנים עם isset() לפני שימוש</li></ul><h4>1.0.2 - 2026-05-04</h4><ul><li>MutationObserver — תמיכה בטעינה דינמית ו-AJAX</li><li>תיקוני flex/grid לקלפי Elementor</li></ul>"
   },
   "hoco-geo-seo": {
     "name": "HOCO Israel — GEO-SEO Optimizer",

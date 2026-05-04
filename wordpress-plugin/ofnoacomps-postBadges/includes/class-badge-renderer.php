@@ -6,6 +6,8 @@
 
 defined( 'ABSPATH' ) || exit;
 
+if ( ! class_exists( 'OPB_Badge_Renderer' ) ) :
+
 class OPB_Badge_Renderer {
 
     /**
@@ -123,3 +125,5 @@ class OPB_Badge_Renderer {
         }
     }
 }
+
+endif; // class_exists OPB_Badge_Renderer

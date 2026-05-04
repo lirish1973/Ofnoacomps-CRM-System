@@ -8,10 +8,12 @@
 
 defined( 'ABSPATH' ) || exit;
 
+if ( ! class_exists( 'OPB_GitHub_Updater' ) ) :
+
 class OPB_GitHub_Updater {
 
     const MANIFEST_URL = 'https://raw.githubusercontent.com/lirish1973/Ofnoacomps-CRM-System/main/plugin-updates.json';
-    const CACHE_TTL    = HOUR_IN_SECONDS;
+    const CACHE_TTL    = 3600; // 1 hour — literal value, no WordPress constant dependency
 
     private $plugin_file;
     private $plugin_slug;
@@ -171,3 +173,5 @@ class OPB_GitHub_Updater {
         ], 200 );
     }
 }
+
+endif; // class_exists OPB_GitHub_Updater
