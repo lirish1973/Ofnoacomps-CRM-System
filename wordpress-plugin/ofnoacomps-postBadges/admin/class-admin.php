@@ -52,8 +52,11 @@ class OPB_Admin {
         // Filter
         $clean['filter_mode']  = in_array( isset( $input['filter_mode'] ) ? $input['filter_mode'] : 'all', array( 'all', 'categories', 'tags' ), true )
                                     ? $input['filter_mode'] : 'all';
-        $raw_terms = isset( $input['filter_terms'] ) ? (array) $input['filter_terms'] : [];
+        $raw_terms = isset( $input['filter_terms'] ) ? (array) $input['filter_terms'] : array();
         $clean['filter_terms'] = array_values( array_map( 'intval', $raw_terms ) );
+
+        // ACF / custom image fields
+        $clean['acf_fields'] = sanitize_text_field( isset( $input['acf_fields'] ) ? $input['acf_fields'] : '' );
 
         return $clean;
     }

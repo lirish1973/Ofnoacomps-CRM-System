@@ -99,6 +99,21 @@ defined( 'ABSPATH' ) || exit;
                     </div>
                 </div>
 
+                <!-- ACF / CUSTOM IMAGE FIELDS -->
+                <div class="opb-card">
+                    <h2 class="opb-card__title">שדות תמונת ACF / Custom Fields</h2>
+                    <p class="description" style="margin-bottom:10px;">
+                        אם התמונה מוצגת דרך <strong>ACF</strong> (או שדה מטא מותאם), הזן כאן את שם שדה המטא — כך הפלאגין ימצא את הפוסט הנכון גם כשאלמנטור מרנדר את התמונה.<br>
+                        לשדות מרובים, הפרד בפסיק. <em>דוגמה: <code>main_image, hero_photo</code></em><br>
+                        <strong>השאר ריק</strong> לזיהוי אוטומטי (מומלץ לאתרים קטנים).
+                    </p>
+                    <input type="text" id="opb_acf_fields"
+                           name="<?php echo OPB_OPTION; ?>[acf_fields]"
+                           value="<?php echo esc_attr( isset( $s['acf_fields'] ) ? $s['acf_fields'] : '' ); ?>"
+                           class="regular-text"
+                           placeholder="main_image, trail_photo, ...">
+                </div>
+
                 <!-- BADGE TYPE -->
                 <div class="opb-card">
                     <h2 class="opb-card__title">סוג Badge</h2>
