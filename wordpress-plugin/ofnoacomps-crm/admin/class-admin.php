@@ -58,6 +58,20 @@ class Ofnoacomps_CRM_Admin {
     }
 
     public function handle_actions(): void {
+        // Backward-compat redirect: some saved links/bookmarks use the wrong
+        // slug "ocrm-crm" instead of the real menu slug "ofnoacomps-crm".
+        // WordPress shows a generic "you don't have permission" wp_die() for
+        // any admin.php?page=... that isn't registered, which is misleading -
+        // it's not a capability problem, the page just doesn't exist. Redirect
+        // transparently to the real dashboard, keeping all query args (from/to/etc).
+        if (isset($_GET['page']) && $_GET['page'] === 'ocrm-crm') {
+            $args = $_GET;
+            unset($args['page']);
+            $args['page'] = 'ofnoacomps-crm';
+            wp_safe_redirect(admin_url('admin.php?' . http_build_query($args)));
+            exit;
+        }
+
         // Bulk delete leads
         if (isset($_POST['ofnoacomps_bulk_action']) && $_POST['ofnoacomps_bulk_action'] === 'delete_leads') {
             check_admin_referer('ofnoacomps_bulk_action');
