@@ -2,11 +2,11 @@
   "ofnoacomps-crm": {
     "name": "Ofnoacomps CRM",
     "slug": "ofnoacomps-crm",
-    "version": "1.4.3",
+    "version": "1.4.4",
     "tested": "6.7",
     "requires": "5.8",
     "requires_php": "7.4",
-    "last_updated": "2026-04-22",
+    "last_updated": "2026-07-18",
     "homepage": "https://github.com/lirish1973/Ofnoacomps-CRM-System",
     "download_url": "https://github.com/lirish1973/Ofnoacomps-CRM-System/raw/main/wordpress-plugin/ofnoacomps-crm.zip",
     "description": "מערכת CRM מתקדמת למעקב אחר מבקרים, לידים, ואנליטיקס בזמן אמת עבור אתרי WordPress. כולל מעקב WooCommerce מלא והשגורה מקצועית.",
