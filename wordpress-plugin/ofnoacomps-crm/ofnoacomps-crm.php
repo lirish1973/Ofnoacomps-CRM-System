@@ -3,7 +3,7 @@
  * Plugin Name: Ofnoacomps CRM
  * Plugin URI:  https://www.ofnoacomps.co.il
  * Description: מערכת CRM מלאה לניהול לידים, לקוחות, עסקאות ודוחות עם מעקב מקור תנועה.
- * Version:     1.4.4
+ * Version:     1.5.0
  * Author:      Ofnoacomps
  * Text Domain: ofnoacomps-crm
  * Domain Path: /languages
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('OFNOACOMPS_CRM_VERSION', '1.4.4');
+define('OFNOACOMPS_CRM_VERSION', '1.5.0');
 define('OFNOACOMPS_CRM_PLUGIN_DIR',  plugin_dir_path(__FILE__));
 define('OFNOACOMPS_CRM_PLUGIN_URL',  plugin_dir_url(__FILE__));
 define('OFNOACOMPS_CRM_PLUGIN_FILE', __FILE__);
@@ -80,13 +80,83 @@ function ofnoacomps_crm_init() {
 
     // Generic hook
     add_action('ofnoacomps_crm_capture_lead', ['Ofnoacomps_CRM_Lead', 'capture'], 10, 1);
+
+    // Analytics retention — daily pruning of old rows
+    add_action('ofnoacomps_crm_prune_analytics', ['Ofnoacomps_CRM_Database', 'prune_analytics']);
+    if (!wp_next_scheduled('ofnoacomps_crm_prune_analytics')) {
+        wp_schedule_event(time() + HOUR_IN_SECONDS, 'daily', 'ofnoacomps_crm_prune_analytics');
+    }
 }
 add_action('plugins_loaded', 'ofnoacomps_crm_init');
 add_action('plugins_loaded', ['Ofnoacomps_CRM_Database', 'maybe_upgrade'], 5);
 
 // ── Tracker ───────────────────────────────────────────────────────────────────
 
+/**
+ * Should this request be tracked at all?
+ *
+ * Skips staff and obvious bots. Both were previously recorded, inflating the
+ * analytics tables and costing a full WordPress bootstrap per hit on
+ * admin-ajax.php.
+ *
+ * Note on logged-in users: only *staff* are excluded, not every logged-in
+ * account. On a B2B store the logged-in visitors are the wholesale customers —
+ * excluding them would throw away the most valuable traffic in the dataset.
+ * Staff is defined by `edit_posts`, which covers administrator / editor /
+ * shop_manager but not `customer` or B2BKing roles.
+ *
+ * @return bool
+ */
+function ofnoacomps_crm_should_track(): bool {
+    if (ofnoacomps_crm_is_staff()) {
+        return (bool) apply_filters('ofnoacomps_crm_track_staff', false);
+    }
+    if (ofnoacomps_crm_is_bot()) {
+        return false;
+    }
+    return (bool) apply_filters('ofnoacomps_crm_should_track', true);
+}
+
+/**
+ * Is the current user a staff member whose browsing should not pollute analytics?
+ *
+ * @return bool
+ */
+function ofnoacomps_crm_is_staff(): bool {
+    if (!is_user_logged_in()) {
+        return false;
+    }
+    return current_user_can('edit_posts') || current_user_can('manage_woocommerce');
+}
+
+/**
+ * Cheap user-agent based bot check. Substring match, no regex, no DB.
+ *
+ * @return bool
+ */
+function ofnoacomps_crm_is_bot(): bool {
+    $ua = isset($_SERVER['HTTP_USER_AGENT']) ? strtolower($_SERVER['HTTP_USER_AGENT']) : '';
+    if ($ua === '') {
+        return true; // no UA at all — not a real browser
+    }
+    $needles = apply_filters('ofnoacomps_crm_bot_agents', [
+        'bot', 'spider', 'crawl', 'slurp', 'headlesschrome', 'phantomjs', 'selenium',
+        'puppeteer', 'playwright', 'lighthouse', 'pagespeed', 'gtmetrix', 'pingdom',
+        'uptimerobot', 'statuscake', 'curl/', 'wget/', 'python-requests', 'go-http-client',
+        'scrapy', 'libwww', 'okhttp', 'java/', 'axios/', 'node-fetch',
+    ]);
+    foreach ($needles as $needle) {
+        if ($needle !== '' && strpos($ua, $needle) !== false) {
+            return true;
+        }
+    }
+    return false;
+}
+
 function ofnoacomps_crm_enqueue_tracker() {
+    if (!ofnoacomps_crm_should_track()) {
+        return;
+    }
     wp_enqueue_script(
         'ofnoacomps-crm-tracker',
         OFNOACOMPS_CRM_PLUGIN_URL . 'assets/tracker.js',
@@ -484,6 +554,9 @@ function ofnoacomps_crm_capture_gravity_lead($entry, $form) {
 
 function ofnoacomps_crm_ajax_track_pageview() {
     global $wpdb;
+    if (!ofnoacomps_crm_should_track()) {
+        wp_send_json_success(['ok' => true, 'skipped' => true]);
+    }
     $wpdb->insert($wpdb->prefix . 'ofnoacomps_pageviews', [
         'session_id'   => sanitize_text_field($_POST['session_id']   ?? ''),
         'page_url'     => esc_url_raw($_POST['page_url']             ?? ''),
@@ -503,6 +576,9 @@ function ofnoacomps_crm_ajax_track_pageview() {
 
 function ofnoacomps_crm_ajax_track_event() {
     global $wpdb;
+    if (!ofnoacomps_crm_should_track()) {
+        wp_send_json_success(['ok' => true, 'skipped' => true]);
+    }
     $wpdb->insert($wpdb->prefix . 'ofnoacomps_events', [
         'session_id'  => sanitize_text_field($_POST['session_id']  ?? ''),
         'event_type'  => sanitize_text_field($_POST['event_type']  ?? ''),

@@ -166,7 +166,10 @@
 
     function trackPageview() {
         var tracker = getCookie(COOKIE_NAME) || {};
-        sendAjax('ofnoacomps_track_pageview', {
+        // sendBeacon instead of fetch: the browser queues it outside the page's
+        // resource budget, so the pageview ping never competes with images,
+        // CSS or JS during load. Falls back to fetch where unsupported.
+        sendBeacon('ofnoacomps_track_pageview', {
             session_id:   getSessionId(),
             page_url:     window.location.href,
             page_title:   document.title || '',

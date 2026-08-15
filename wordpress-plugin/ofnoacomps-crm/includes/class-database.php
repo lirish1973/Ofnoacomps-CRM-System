@@ -236,6 +236,11 @@ class Ofnoacomps_CRM_Database {
 
     public static function deactivate() {
         // Nothing destructive on deactivate — data is preserved.
+        // Only clear our own scheduled event so it does not linger.
+        $ts = wp_next_scheduled('ofnoacomps_crm_prune_analytics');
+        if ($ts) {
+            wp_unschedule_event($ts, 'ofnoacomps_crm_prune_analytics');
+        }
     }
 
     public static function uninstall() {
@@ -297,5 +302,67 @@ class Ofnoacomps_CRM_Database {
     public static function table($name) {
         global $wpdb;
         return $wpdb->prefix . 'ofnoacomps_' . $name;
+    }
+
+    /**
+     * Delete analytics rows older than the retention window.
+     *
+     * Runs daily via the `ofnoacomps_crm_prune_analytics` cron event. Without it
+     * the pageviews and events tables grow without bound — on a live store they
+     * had reached 42 MB, larger than wp_posts, which slows backups, admin report
+     * queries and nightly dumps.
+     *
+     * Deletes in bounded batches so a large backlog never produces a long lock
+     * or exceeds max_execution_time on the first run.
+     *
+     * Retention defaults to 180 days. Override with:
+     *     add_filter('ofnoacomps_crm_retention_days', fn() => 365);
+     * Return 0 to disable pruning entirely.
+     *
+     * @return int Number of rows deleted this run.
+     */
+    public static function prune_analytics(): int {
+        global $wpdb;
+
+        $days = (int) apply_filters('ofnoacomps_crm_retention_days', 180);
+        if ($days <= 0) {
+            return 0;
+        }
+
+        $batch   = max(100, (int) apply_filters('ofnoacomps_crm_prune_batch_size', 5000));
+        $passes  = max(1, (int) apply_filters('ofnoacomps_crm_prune_max_batches', 20));
+        $cutoff  = gmdate('Y-m-d H:i:s', time() - ($days * DAY_IN_SECONDS));
+        $deleted = 0;
+
+        foreach (['ofnoacomps_pageviews', 'ofnoacomps_events'] as $suffix) {
+            $table = $wpdb->prefix . $suffix;
+
+            for ($i = 0; $i < $passes; $i++) {
+                $rows = $wpdb->query($wpdb->prepare(
+                    "DELETE FROM {$table} WHERE created_at < %s ORDER BY id ASC LIMIT %d",
+                    $cutoff,
+                    $batch
+                ));
+
+                if ($rows === false || $rows <= 0) {
+                    break;
+                }
+                $deleted += (int) $rows;
+
+                if ($rows < $batch) {
+                    break; // caught up
+                }
+            }
+        }
+
+        if ($deleted > 0) {
+            update_option('ofnoacomps_crm_last_prune', [
+                'time'    => gmdate('Y-m-d H:i:s'),
+                'deleted' => $deleted,
+                'cutoff'  => $cutoff,
+            ], false);
+        }
+
+        return $deleted;
     }
 }

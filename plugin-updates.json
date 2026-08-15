@@ -2,17 +2,17 @@
   "ofnoacomps-crm": {
     "name": "Ofnoacomps CRM",
     "slug": "ofnoacomps-crm",
-    "version": "1.4.4",
+    "version": "1.5.0",
     "tested": "6.7",
     "requires": "5.8",
     "requires_php": "7.4",
-    "last_updated": "2026-07-18",
+    "last_updated": "2026-08-15",
     "homepage": "https://github.com/lirish1973/Ofnoacomps-CRM-System",
     "download_url": "https://github.com/lirish1973/Ofnoacomps-CRM-System/raw/main/wordpress-plugin/ofnoacomps-crm.zip",
     "description": "מערכת CRM מתקדמת למעקב אחר מבקרים, לידים, ואנליטיקס בזמן אמת עבור אתרי WordPress. כולל מעקב WooCommerce מלא והשגורה מקצועית.",
     "author": "Ofnoacomps",
     "author_homepage": "https://github.com/lirish1973",
-    "changelog": "<h4>1.4.3 - 2026-04-22</h4><ul><li>תיקון קריטי: לכידת email, phone, message מטפסי Elementor Pro, CF7, WPForms ו-GravityForms</li><li>Elementor: זיהוי שדות לפי type (email/tel/textarea)</li><li>CF7: זיהוי אוטומטי של שדות טלפון ואימייל</li></ul>"
+    "changelog": "<h4>1.5.0 - 2026-08-15</h4><ul><li>ביצועים: שמירת נתוני אנליטיקס מוגבלת ל-180 יום עם ניקוי יומי אוטומטי</li><li>ביצועים: סינון בוטים בצד שרת</li><li>ביצועים: מעקב מדלג על אנשי צוות. לקוחות B2B מחוברים ממשיכים להיספר</li><li>ביצועים: pageview נשלח ב-sendBeacon במקום fetch</li><li>פילטרים חדשים: ofnoacomps_crm_retention_days, ofnoacomps_crm_should_track, ofnoacomps_crm_track_staff, ofnoacomps_crm_bot_agents</li></ul><h4>1.4.3 - 2026-04-22</h4><ul><li>תיקון קריטי: לכידת email, phone, message מטפסי Elementor Pro, CF7, WPForms ו-GravityForms</li><li>Elementor: זיהוי שדות לפי type (email/tel/textarea)</li><li>CF7: זיהוי אוטומטי של שדות טלפון ואימייל</li></ul>"
   },
   "ofnoacomps-postBadges": {
     "name": "Ofnoacomps Post Badges",
