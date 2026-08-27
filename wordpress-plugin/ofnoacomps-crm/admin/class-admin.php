@@ -168,8 +168,23 @@ class Ofnoacomps_CRM_Admin {
     public function page_settings(): void {
         if (isset($_POST['ofnoacomps_settings_nonce']) && wp_verify_nonce($_POST['ofnoacomps_settings_nonce'], 'ofnoacomps_settings')) {
             update_option('ofnoacomps_crm_currency', sanitize_text_field($_POST['currency'] ?? '₪'));
-            update_option('ofnoacomps_crm_notify_email', sanitize_email($_POST['notify_email'] ?? ''));
-            echo '<div class="notice notice-success"><p>הגדרות נשמרו.</p></div>';
+
+            // ריבוי נמענים: פסיק / נקודה-פסיק / שורה חדשה. נשמר כמחרוזת מנורמלת.
+            $raw_emails   = (string) wp_unslash($_POST['notify_email'] ?? '');
+            $notify_list  = Ofnoacomps_CRM_Lead::parse_emails($raw_emails);
+            $rejected     = max(0, count(preg_split('/[,;\s|]+/', trim($raw_emails), -1, PREG_SPLIT_NO_EMPTY)) - count($notify_list));
+            update_option('ofnoacomps_crm_notify_email', implode(', ', $notify_list));
+
+            $msg = 'הגדרות נשמרו.';
+            if ($notify_list) {
+                $msg .= ' התראות לידים יישלחו ל-' . count($notify_list) . ' נמענים: ' . esc_html(implode(', ', $notify_list)) . '.';
+            } else {
+                $msg .= ' לא הוגדרו נמענים — ההתראות יישלחו לברירת המחדל (ofnoacomps@gmail.com + אימייל הניהול של האתר).';
+            }
+            if ($rejected > 0) {
+                $msg .= ' <strong>' . $rejected . ' כתובות לא תקינות הושמטו.</strong>';
+            }
+            echo '<div class="notice notice-success"><p>' . $msg . '</p></div>';
         }
         $currency     = get_option('ofnoacomps_crm_currency', '₪');
         $notify_email = get_option('ofnoacomps_crm_notify_email', get_option('admin_email'));

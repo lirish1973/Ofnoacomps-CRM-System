@@ -15,8 +15,14 @@ $api_keys = Ofnoacomps_CRM_API_Keys::list_keys();
             <p style="color:#64748b;font-size:12px;">לדוגמה: ₪ / $ / €</p>
         </div>
         <div class="ocrm-form-row">
-            <label>אימייל להתראות לידים חדשים</label>
-            <input type="email" name="notify_email" value="<?php echo esc_attr($notify_email); ?>">
+            <label>אימיילים להתראות לידים חדשים</label>
+            <textarea name="notify_email" rows="3" style="width:100%;direction:ltr;text-align:left;font-family:monospace;"
+                      placeholder="sales@example.com, manager@example.com"><?php echo esc_textarea($notify_email); ?></textarea>
+            <p style="color:#64748b;font-size:12px;">
+                אפשר להזין <strong>כמה נמענים</strong> — מופרדים בפסיק, נקודה-פסיק או שורה חדשה.<br>
+                כתובות לא תקינות יושמטו בשמירה. בעל הליד מקבל התראה תמיד, בנוסף לרשימה כאן.<br>
+                אם השדה יישאר ריק — ההתראות יישלחו ל-ofnoacomps@gmail.com ולאימייל הניהול של האתר.
+            </p>
         </div>
     </div>
 

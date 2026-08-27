@@ -224,8 +224,50 @@ class Ofnoacomps_CRM_Lead {
     }
 
     /**
+     * פירוק טקסט חופשי של אימיילים לרשימה נקייה.
+     * מקבל הפרדה בפסיק, נקודה-פסיק, שורה חדשה, טאב או רווח.
+     * מחזיר רק כתובות תקינות, ללא כפילויות (ללא תלות ברישיות).
+     *
+     * @param string $raw
+     * @return string[]
+     */
+    public static function parse_emails(string $raw): array {
+        $raw   = str_replace(["\r\n", "\r", "\n", "\t", ';', ' ', '|'], ',', $raw);
+        $out   = [];
+        $seen  = [];
+        foreach (explode(',', $raw) as $part) {
+            $email = sanitize_email(trim($part));
+            if (!$email || !is_email($email)) {
+                continue;
+            }
+            $key = strtolower($email);
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+            $out[]      = $email;
+        }
+        return $out;
+    }
+
+    /**
+     * הנמענים הקבועים להתראות לידים — מתוך ההגדרות (אפשר כמה).
+     * אם השדה ריק: נפילה לברירת המחדל ההיסטורית (ofnoacomps@gmail.com + אימייל הניהול של האתר).
+     *
+     * @return string[]
+     */
+    public static function get_notify_recipients(): array {
+        $configured = self::parse_emails((string) get_option('ofnoacomps_crm_notify_email', ''));
+        if (empty($configured)) {
+            $configured = self::parse_emails('ofnoacomps@gmail.com,' . (string) get_option('admin_email'));
+        }
+        return $configured;
+    }
+
+    /**
      * שלח מייל התראה על ליד חדש.
-     * שולח תמיד ל: ofnoacomps@gmail.com + לאדמין האתר + לבעלים (אם שונה).
+     * הנמענים נקבעים בהגדרות CRM ("אימיילים להתראות לידים חדשים") — אפשר כמה,
+     * ובנוסף נשלח תמיד גם לבעל הליד (owner) אם יש לו אימייל.
      */
     private static function notify_owner(int $lead_id, array $row): void {
         $name    = trim($row['first_name'] . ' ' . $row['last_name']) ?: 'ליד חדש';
@@ -233,19 +275,28 @@ class Ofnoacomps_CRM_Lead {
         $site    = get_bloginfo('name') ?: get_bloginfo('url');
         $time    = wp_date('d/m/Y H:i', time());
 
-        // נמענים: תמיד שלח ל-ofnoacomps@gmail.com + אדמין האתר + בעלים
-        $recipients = ['ofnoacomps@gmail.com'];
-
-        $site_admin = get_option('admin_email');
-        if ($site_admin && !in_array($site_admin, $recipients, true)) {
-            $recipients[] = $site_admin;
-        }
+        // נמענים: הרשימה מהגדרות ה-CRM (אפשר כמה) + בעל הליד
+        $recipients = self::get_notify_recipients();
 
         if (!empty($row['owner_id'])) {
             $owner = get_user_by('id', (int) $row['owner_id']);
             if ($owner && !in_array($owner->user_email, $recipients, true)) {
                 $recipients[] = $owner->user_email;
             }
+        }
+
+        /**
+         * סינון רשימת הנמענים של התראת ליד חדש.
+         *
+         * @param string[] $recipients
+         * @param int      $lead_id
+         * @param array    $row
+         */
+        $recipients = apply_filters('ofnoacomps_crm_notify_recipients', $recipients, $lead_id, $row);
+        $recipients = self::parse_emails(implode(',', (array) $recipients));
+
+        if (empty($recipients)) {
+            return;
         }
 
         $subject = "ליד חדש מאתר $site: $name";

@@ -40,19 +40,36 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "today=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
 
-      - name: Check manifest vs CRM version
+      - name: Check manifest and built ZIP vs CRM version
         id: check
         if: steps.crm_changed.outputs.changed == 'true'
         run: |
           MV=$(python3 -c "import json; d=json.load(open('plugin-updates.json')); print(d['ofnoacomps-crm']['version'])")
           PV="${{ steps.meta.outputs.version }}"
-          [ "$MV" = "$PV" ] && echo "skip=true" >> $GITHUB_OUTPUT || echo "skip=false" >> $GITHUB_OUTPUT
+          ZV=""
+          if [ -f wordpress-plugin/ofnoacomps-crm.zip ]; then
+            ZV=$(unzip -p wordpress-plugin/ofnoacomps-crm.zip ofnoacomps-crm/ofnoacomps-crm.php 2>/dev/null | grep -m1 "OFNOACOMPS_CRM_VERSION" | grep -oP "'\K[0-9.]+" || true)
+          fi
+          echo "plugin=$PV manifest=$MV zip=$ZV"
+          if [ "$MV" = "$PV" ] && [ "$ZV" = "$PV" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Build ofnoacomps-crm ZIP
         if: steps.crm_changed.outputs.changed == 'true' && steps.check.outputs.skip == 'false'
         run: |
           cd wordpress-plugin && rm -f ofnoacomps-crm.zip
           zip -r ofnoacomps-crm.zip ofnoacomps-crm/ --exclude "*.DS_Store" --exclude "*Thumbs.db"
+
+      - name: Verify version inside built CRM ZIP
+        if: steps.crm_changed.outputs.changed == 'true' && steps.check.outputs.skip == 'false'
+        run: |
+          ZV=$(unzip -p wordpress-plugin/ofnoacomps-crm.zip ofnoacomps-crm/ofnoacomps-crm.php | grep -m1 "OFNOACOMPS_CRM_VERSION" | grep -oP "'\K[0-9.]+")
+          PV="${{ steps.meta.outputs.version }}"
+          echo "zip=$ZV plugin=$PV"
+          [ "$ZV" = "$PV" ] || { echo "::error::ZIP contains $ZV but plugin source is $PV"; exit 1; }
 
       - name: Update manifest (CRM)
         if: steps.crm_changed.outputs.changed == 'true' && steps.check.outputs.skip == 'false'
@@ -106,19 +123,36 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "today=$(date +%Y-%m-%d)" >> $GITHUB_OUTPUT
 
-      - name: Check manifest vs postBadges version
+      - name: Check manifest and built ZIP vs postBadges version
         id: check
         if: steps.pb_changed.outputs.changed == 'true'
         run: |
           MV=$(python3 -c "import json; d=json.load(open('plugin-updates.json')); print(d['ofnoacomps-postBadges']['version'])")
           PV="${{ steps.meta.outputs.version }}"
-          [ "$MV" = "$PV" ] && echo "skip=true" >> $GITHUB_OUTPUT || echo "skip=false" >> $GITHUB_OUTPUT
+          ZV=""
+          if [ -f wordpress-plugin/ofnoacomps-postBadges.zip ]; then
+            ZV=$(unzip -p wordpress-plugin/ofnoacomps-postBadges.zip ofnoacomps-postBadges/ofnoacomps-postBadges.php 2>/dev/null | grep -m1 "OPB_VERSION" | grep -oP "'\K[0-9.]+" || true)
+          fi
+          echo "plugin=$PV manifest=$MV zip=$ZV"
+          if [ "$MV" = "$PV" ] && [ "$ZV" = "$PV" ]; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Build ofnoacomps-postBadges ZIP
         if: steps.pb_changed.outputs.changed == 'true' && steps.check.outputs.skip == 'false'
         run: |
           cd wordpress-plugin && rm -f ofnoacomps-postBadges.zip
           zip -r ofnoacomps-postBadges.zip ofnoacomps-postBadges/ --exclude "*.DS_Store" --exclude "*Thumbs.db"
+
+      - name: Verify version inside built postBadges ZIP
+        if: steps.pb_changed.outputs.changed == 'true' && steps.check.outputs.skip == 'false'
+        run: |
+          ZV=$(unzip -p wordpress-plugin/ofnoacomps-postBadges.zip ofnoacomps-postBadges/ofnoacomps-postBadges.php | grep -m1 "OPB_VERSION" | grep -oP "'\K[0-9.]+")
+          PV="${{ steps.meta.outputs.version }}"
+          echo "zip=$ZV plugin=$PV"
+          [ "$ZV" = "$PV" ] || { echo "::error::ZIP contains $ZV but plugin source is $PV"; exit 1; }
 
       - name: Update manifest (postBadges)
         if: steps.pb_changed.outputs.changed == 'true' && steps.check.outputs.skip == 'false'
