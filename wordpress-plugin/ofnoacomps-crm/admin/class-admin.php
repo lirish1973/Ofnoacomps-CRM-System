@@ -25,6 +25,9 @@ class Ofnoacomps_CRM_Admin {
         add_submenu_page('ofnoacomps-crm', 'לקוחות',      'לקוחות',      'edit_posts', 'ofnoacomps-crm-customers', [$this, 'page_customers']);
         add_submenu_page('ofnoacomps-crm', 'Pipeline',     'Pipeline',     'edit_posts', 'ofnoacomps-crm-pipeline',  [$this, 'page_pipeline']);
         add_submenu_page('ofnoacomps-crm', 'דוחות',        'דוחות',        'edit_posts', 'ofnoacomps-crm-reports',   [$this, 'page_reports']);
+        if (Ofnoacomps_CRM_Frontend_Dashboard::enabled()) {
+            add_submenu_page('ofnoacomps-crm', 'מרכז שליטה באתר', 'מרכז שליטה באתר ↗', 'manage_options', 'ofnoacomps-crm-command-center', [$this, 'page_command_center']);
+        }
         add_submenu_page('ofnoacomps-crm', 'הגדרות',      'הגדרות',      'manage_options', 'ofnoacomps-crm-settings', [$this, 'page_settings']);
     }
 
@@ -69,6 +72,12 @@ class Ofnoacomps_CRM_Admin {
             unset($args['page']);
             $args['page'] = 'ofnoacomps-crm';
             wp_safe_redirect(admin_url('admin.php?' . http_build_query($args)));
+            exit;
+        }
+
+        // Menu item "מרכז שליטה באתר" jumps straight to the front-end page.
+        if (isset($_GET['page']) && $_GET['page'] === 'ofnoacomps-crm-command-center' && current_user_can('manage_options')) {
+            wp_redirect(Ofnoacomps_CRM_Frontend_Dashboard::url());
             exit;
         }
 
@@ -165,6 +174,11 @@ class Ofnoacomps_CRM_Admin {
         require OFNOACOMPS_CRM_PLUGIN_DIR . 'admin/views/reports.php';
     }
 
+    /** Fallback only — handle_actions() normally redirects before this renders. */
+    public function page_command_center(): void {
+        echo '<div class="wrap"><p><a class="button button-primary" href="' . esc_url(Ofnoacomps_CRM_Frontend_Dashboard::url()) . '">פתח את מרכז השליטה</a></p></div>';
+    }
+
     public function page_settings(): void {
         if (isset($_POST['ofnoacomps_settings_nonce']) && wp_verify_nonce($_POST['ofnoacomps_settings_nonce'], 'ofnoacomps_settings')) {
             update_option('ofnoacomps_crm_currency', sanitize_text_field($_POST['currency'] ?? '₪'));
@@ -174,6 +188,17 @@ class Ofnoacomps_CRM_Admin {
             $notify_list  = Ofnoacomps_CRM_Lead::parse_emails($raw_emails);
             $rejected     = max(0, count(preg_split('/[,;\s|]+/', trim($raw_emails), -1, PREG_SPLIT_NO_EMPTY)) - count($notify_list));
             update_option('ofnoacomps_crm_notify_email', implode(', ', $notify_list));
+
+            // Command Center (front-end dashboard)
+            $old_slug = Ofnoacomps_CRM_Frontend_Dashboard::slug();
+            $old_on   = Ofnoacomps_CRM_Frontend_Dashboard::enabled();
+            $new_slug = sanitize_title(wp_unslash($_POST['dash_slug'] ?? ''));
+            $new_on   = !empty($_POST['dash_enabled']) ? 1 : 0;
+            update_option(Ofnoacomps_CRM_Frontend_Dashboard::OPT_SLUG, $new_slug !== '' ? $new_slug : Ofnoacomps_CRM_Frontend_Dashboard::DEFAULT_SLUG);
+            update_option(Ofnoacomps_CRM_Frontend_Dashboard::OPT_ENABLED, $new_on);
+            if ($old_slug !== Ofnoacomps_CRM_Frontend_Dashboard::slug() || $old_on !== (bool) $new_on) {
+                Ofnoacomps_CRM_Frontend_Dashboard::reset_rules(); // rules are rebuilt on the next request
+            }
 
             $msg = 'הגדרות נשמרו.';
             if ($notify_list) {

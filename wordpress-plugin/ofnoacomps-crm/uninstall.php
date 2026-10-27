@@ -37,6 +37,9 @@ foreach ( $tables as $table ) {
 delete_option( 'ofnoacomps_crm_schema_version' );
 delete_option( 'ofnoacomps_crm_currency' );
 delete_option( 'ofnoacomps_crm_notify_email' );
+delete_option( 'ofnoacomps_crm_dash_enabled' );
+delete_option( 'ofnoacomps_crm_dash_slug' );
+delete_option( 'ofnoacomps_crm_dash_rules' );
 
 // Remove cached update transients
 $wpdb->query(

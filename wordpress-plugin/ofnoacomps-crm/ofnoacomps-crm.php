@@ -3,7 +3,7 @@
  * Plugin Name: Ofnoacomps CRM
  * Plugin URI:  https://www.ofnoacomps.co.il
  * Description: מערכת CRM מלאה לניהול לידים, לקוחות, עסקאות ודוחות עם מעקב מקור תנועה.
- * Version:     1.5.1
+ * Version:     1.6.0
  * Author:      Ofnoacomps
  * Text Domain: ofnoacomps-crm
  * Domain Path: /languages
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('OFNOACOMPS_CRM_VERSION', '1.5.1');
+define('OFNOACOMPS_CRM_VERSION', '1.6.0');
 define('OFNOACOMPS_CRM_PLUGIN_DIR',  plugin_dir_path(__FILE__));
 define('OFNOACOMPS_CRM_PLUGIN_URL',  plugin_dir_url(__FILE__));
 define('OFNOACOMPS_CRM_PLUGIN_FILE', __FILE__);
@@ -30,6 +30,8 @@ spl_autoload_register(function ($class) {
         'Ofnoacomps_CRM_REST_API'   => 'api/class-rest-api.php',
         'Ofnoacomps_CRM_API_Keys'   => 'includes/class-api-keys.php',
         'Ofnoacomps_CRM_Analytics'  => 'includes/class-analytics.php',
+        'Ofnoacomps_CRM_Dashboard_Data'      => 'includes/class-dashboard-data.php',
+        'Ofnoacomps_CRM_Frontend_Dashboard'  => 'includes/class-frontend-dashboard.php',
     ];
     if (isset($map[$class])) {
         require_once OFNOACOMPS_CRM_PLUGIN_DIR . $map[$class];
@@ -41,7 +43,10 @@ require_once OFNOACOMPS_CRM_PLUGIN_DIR . 'includes/class-github-updater.php';
 new Ofnoacomps_GitHub_Updater( __FILE__, 'ofnoacomps-crm', OFNOACOMPS_CRM_VERSION );
 
 // Activation / Deactivation / Uninstall
-register_activation_hook(__FILE__,   ['Ofnoacomps_CRM_Database', 'install']);
+register_activation_hook(__FILE__, function () {
+    Ofnoacomps_CRM_Database::install();
+    Ofnoacomps_CRM_Frontend_Dashboard::reset_rules(); // re-register /crm-dashboard/ on next load
+});
 register_deactivation_hook(__FILE__, ['Ofnoacomps_CRM_Database', 'deactivate']);
 register_uninstall_hook(__FILE__,    ['Ofnoacomps_CRM_Database', 'uninstall']);
 
@@ -57,6 +62,9 @@ function ofnoacomps_crm_init() {
         $api = new Ofnoacomps_CRM_REST_API();
         $api->register_routes();
     });
+
+    // Front-end Command Center (admins only)
+    Ofnoacomps_CRM_Frontend_Dashboard::init();
 
     add_action('wp_enqueue_scripts', 'ofnoacomps_crm_enqueue_tracker');
 

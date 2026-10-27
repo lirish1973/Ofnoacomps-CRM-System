@@ -26,6 +26,30 @@ $api_keys = Ofnoacomps_CRM_API_Keys::list_keys();
         </div>
     </div>
 
+    <div class="ocrm-detail-card" style="margin-top:16px;">
+        <h3>📈 מרכז שליטה באתר</h3>
+        <p style="color:#64748b;font-size:13px;margin-top:0;">
+            דף באתר עצמו שמרכז לידים, סוכן מטא וסוכן SEO. רק מנהלי מערכת יכולים לפתוח אותו —
+            אורח מועבר להתחברות, ומשתמש שאינו מנהל מקבל דף 404. הדף לא נסרק במנועי חיפוש ולא נשמר במטמון.
+        </p>
+        <div class="ocrm-form-row">
+            <label style="display:flex;gap:8px;align-items:center;">
+                <input type="checkbox" name="dash_enabled" value="1" style="width:auto;margin:0;" <?php checked(Ofnoacomps_CRM_Frontend_Dashboard::enabled()); ?>>
+                הפעל את מרכז השליטה
+            </label>
+        </div>
+        <div class="ocrm-form-row">
+            <label>כתובת הדף</label>
+            <div style="display:flex;align-items:center;gap:4px;direction:ltr;">
+                <span style="color:#64748b;"><?php echo esc_html(trailingslashit(home_url())); ?></span>
+                <input type="text" name="dash_slug" value="<?php echo esc_attr(Ofnoacomps_CRM_Frontend_Dashboard::slug()); ?>" style="max-width:220px;direction:ltr;">
+            </div>
+        </div>
+        <?php if (Ofnoacomps_CRM_Frontend_Dashboard::enabled()): ?>
+            <a class="ocrm-btn ocrm-btn-outline ocrm-btn-sm" href="<?php echo esc_url(Ofnoacomps_CRM_Frontend_Dashboard::url()); ?>" target="_blank" rel="noopener">פתח את מרכז השליטה ↗</a>
+        <?php endif; ?>
+    </div>
+
     <button type="submit" class="ocrm-btn ocrm-btn-primary" style="margin-top:16px;">שמור הגדרות</button>
 </form>
 
